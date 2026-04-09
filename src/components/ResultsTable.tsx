@@ -8,6 +8,12 @@ export interface TableColumn {
   /** Inline width / minWidth style e.g. '20px', '320px', '40%' */
   width?: string;
   minWidth?: string;
+  /**
+   * Optional group label. Consecutive columns sharing the same group value
+   * are rendered under a merged colspan header row (e.g. "School Results").
+   * Columns without a group get rowspan=2 and appear only in the first header row.
+   */
+  group?: string;
 }
 
 interface Props {
@@ -94,28 +100,12 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
       >
         <table className="text-sm border-collapse" style={{ minWidth: '100%', width: 'max-content' }}>
           <thead>
-            <tr className="bg-slate-100 text-slate-600">
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => handleHeaderClick(col.key)}
-                  style={{
-                    width: col.width,
-                    minWidth: col.minWidth ?? col.width,
-                  }}
-                  className={[
-                    'px-3 py-2.5 text-left font-medium border-b border-slate-200',
-                    'cursor-pointer select-none hover:bg-slate-200 transition-colors',
-                    sortKey === col.key ? 'text-[#17345B]' : '',
-                  ].join(' ')}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col.label}
-                    <SortIndicator active={sortKey === col.key} dir={sortDir} />
-                  </span>
-                </th>
-              ))}
-            </tr>
+            <GroupedHeader
+              columns={columns}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onHeaderClick={handleHeaderClick}
+            />
           </thead>
           <tbody>
             {sortedRows.map((row, rowIdx) => (
@@ -175,6 +165,123 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
         <div ref={ghostInnerRef} style={{ width: ghostWidth, height: 1 }} />
       </div>
     </div>
+  );
+}
+
+// ─── Grouped header ───────────────────────────────────────────────────────────
+
+interface GroupedHeaderProps {
+  columns: TableColumn[];
+  sortKey: string | null;
+  sortDir: SortDir;
+  onHeaderClick: (key: string) => void;
+}
+
+function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHeaderProps) {
+  const hasGroups = columns.some((c) => c.group);
+
+  const thStyle = (col: TableColumn) => ({
+    width: col.width,
+    minWidth: col.minWidth ?? col.width,
+  });
+  const thClass = (active: boolean) =>
+    [
+      'px-3 py-2.5 text-left font-medium border-b border-slate-200',
+      'cursor-pointer select-none hover:bg-slate-200 transition-colors',
+      active ? 'text-[#17345B]' : '',
+    ].join(' ');
+
+  if (!hasGroups) {
+    return (
+      <tr className="bg-slate-100 text-slate-600">
+        {columns.map((col) => (
+          <th
+            key={col.key}
+            onClick={() => onHeaderClick(col.key)}
+            style={thStyle(col)}
+            className={thClass(sortKey === col.key)}
+          >
+            <span className="inline-flex items-center gap-1">
+              {col.label}
+              <SortIndicator active={sortKey === col.key} dir={sortDir} />
+            </span>
+          </th>
+        ))}
+      </tr>
+    );
+  }
+
+  // Build group spans for the top header row
+  type GroupSpan =
+    | { kind: 'leaf'; col: TableColumn }          // ungrouped → rowSpan 2
+    | { kind: 'group'; label: string; span: number }; // group → colSpan N
+
+  const groupSpans: GroupSpan[] = [];
+  let i = 0;
+  while (i < columns.length) {
+    const g = columns[i].group;
+    if (!g) {
+      groupSpans.push({ kind: 'leaf', col: columns[i] });
+      i++;
+    } else {
+      let span = 0;
+      while (i + span < columns.length && columns[i + span].group === g) span++;
+      groupSpans.push({ kind: 'group', label: g, span });
+      i += span;
+    }
+  }
+
+  const groupedCols = columns.filter((c) => c.group);
+
+  return (
+    <>
+      {/* Row 1: group labels (colSpan) + ungrouped leaves (rowSpan 2) */}
+      <tr className="bg-slate-100 text-slate-600">
+        {groupSpans.map((gs, idx) => {
+          if (gs.kind === 'leaf') {
+            return (
+              <th
+                key={gs.col.key}
+                rowSpan={2}
+                onClick={() => onHeaderClick(gs.col.key)}
+                style={thStyle(gs.col)}
+                className={thClass(sortKey === gs.col.key)}
+              >
+                <span className="inline-flex items-center gap-1">
+                  {gs.col.label}
+                  <SortIndicator active={sortKey === gs.col.key} dir={sortDir} />
+                </span>
+              </th>
+            );
+          }
+          return (
+            <th
+              key={`${gs.label}-${idx}`}
+              colSpan={gs.span}
+              className="px-3 py-2 text-center font-semibold border-b border-slate-200 text-[#17345B] bg-slate-50"
+            >
+              {gs.label}
+            </th>
+          );
+        })}
+      </tr>
+      {/* Row 2: leaf headers for grouped columns only */}
+      <tr className="bg-slate-100 text-slate-600">
+        {groupedCols.map((col) => (
+          <th
+            key={col.key}
+            onClick={() => onHeaderClick(col.key)}
+            style={thStyle(col)}
+            className={thClass(sortKey === col.key)}
+          >
+            <span className="inline-flex items-center gap-1">
+              {col.label}
+              <SortIndicator active={sortKey === col.key} dir={sortDir} />
+            </span>
+          </th>
+        ))}
+      </tr>
+    </>
   );
 }
 

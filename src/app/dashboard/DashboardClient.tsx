@@ -26,24 +26,29 @@ const COMMENTS_COLUMNS = [
 ];
 
 function comparisonColumns(groups: ComparisonGroup[]) {
-  const cols = [
-    { key: 'itemOrder',      label: '#',             width: '40px',  minWidth: '40px' },
-    { key: 'prompt',         label: 'Item',          width: '320px', minWidth: '240px' },
-    { key: 'schoolN',        label: 'School N',      width: '80px' },
-    { key: 'schoolTop2Pct',  label: 'School Top 2 %', width: '110px' },
-    { key: 'schoolTop3Pct',  label: 'School Top 3 %', width: '110px' },
+  const cols: { key: string; label: string; width?: string; minWidth?: string; group?: string }[] = [
+    { key: 'itemOrder', label: '#',    width: '40px',  minWidth: '40px' },
+    { key: 'prompt',    label: 'Item', width: '320px', minWidth: '240px' },
+    // School — Top 1 computed from SA count; city/region/network lack SA field
+    { key: 'schoolN',       label: 'N',       width: '64px', group: 'School' },
+    { key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px', group: 'School' },
+    { key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px', group: 'School' },
+    { key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px', group: 'School' },
   ];
   if (groups.includes('city')) {
-    cols.push({ key: 'cityN',       label: 'City N',      width: '80px' });
-    cols.push({ key: 'cityTop2Pct', label: 'City Top 2 %', width: '110px' });
+    cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City' });
+    cols.push({ key: 'cityTop2Pct', label: 'Top 2 %', width: '80px', group: 'City' });
+    cols.push({ key: 'cityTop3Pct', label: 'Top 3 %', width: '80px', group: 'City' });
   }
   if (groups.includes('region')) {
-    cols.push({ key: 'regionN',       label: 'Region N',      width: '80px' });
-    cols.push({ key: 'regionTop2Pct', label: 'Region Top 2 %', width: '110px' });
+    cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region' });
+    cols.push({ key: 'regionTop2Pct', label: 'Top 2 %', width: '80px', group: 'Region' });
+    cols.push({ key: 'regionTop3Pct', label: 'Top 3 %', width: '80px', group: 'Region' });
   }
   if (groups.includes('network')) {
-    cols.push({ key: 'networkN',       label: 'Network N',      width: '80px' });
-    cols.push({ key: 'networkTop2Pct', label: 'Network Top 2 %', width: '110px' });
+    cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network' });
+    cols.push({ key: 'networkTop2Pct', label: 'Top 2 %', width: '80px', group: 'Network' });
+    cols.push({ key: 'networkTop3Pct', label: 'Top 3 %', width: '80px', group: 'Network' });
   }
   cols.push({ key: 'domain', label: 'Domain', width: '120px' });
   return cols;
@@ -190,8 +195,12 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         setRows(await res.json());
 
       } else {
-        // comments
-        const base = mergeFilters({ ...formFilters, administration: [adminA] }, secondary);
+        // comments — use secondary.administration if user has made a selection,
+        // otherwise default to adminA (the loaded administration)
+        const commentAdmins = secondary.administration.length > 0
+          ? secondary.administration
+          : (adminA ? [adminA] : []);
+        const base = mergeFilters({ ...formFilters, administration: commentAdmins }, secondary);
         const filters = selectedSchool
           ? { ...base, school: [selectedSchool.name] }
           : base;
@@ -439,6 +448,12 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-3">
           <p className="text-xs text-[#5E738C] mb-2 font-medium">Refine by demographic</p>
           <div className="flex items-center flex-wrap gap-2">
+            <MultiSelect
+              label="Administration"
+              options={[loadedAdminA, ...(loadedAdminB ? [loadedAdminB] : [])].filter(Boolean)}
+              selected={secondaryFilters.administration}
+              onChange={(v) => handleSecondaryFilterChange({ ...secondaryFilters, administration: v })}
+            />
             <MultiSelect
               label="Grade"
               options={filterOptions.grade}

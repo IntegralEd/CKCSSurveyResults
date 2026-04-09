@@ -228,12 +228,16 @@ export function buildComparisonRows(
       const item = itemMap?.get(r.surveyItemRecordId);
       const domain = item ? item.categorySelect.join(', ') : '';
 
+      const schoolTop1Pct = r.schoolN > 0
+        ? round1((r.schoolSACount / r.schoolN) * 100) : 0;
+
       return {
         questionLabel: r.questionLabel,
         prompt: r.prompt,
         domain,
         itemOrder: r.itemOrder,
         schoolN: r.schoolN,
+        schoolTop1Pct,
         schoolTop2Pct: r.schoolTop2Pct,
         schoolTop3Pct: r.schoolTop3Pct,
         cityN:       includeCity    ? r.cityN       : null,

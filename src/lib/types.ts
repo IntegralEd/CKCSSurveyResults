@@ -272,6 +272,7 @@ export interface ComparisonRow {
   itemOrder: number;
   // School
   schoolN: number;
+  schoolTop1Pct: number;
   schoolTop2Pct: number;
   schoolTop3Pct: number;
   // Optional comparison groups — null when that group was not requested
