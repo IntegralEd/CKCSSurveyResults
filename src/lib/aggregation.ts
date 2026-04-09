@@ -17,7 +17,7 @@
  *   they are used as the primary source for top-N computation (sum / n).
  *   If they are absent, top-N is computed from the raw response bucket counts.
  */
-import type { SurveyRespondent, SurveyItem, AgreementRow, TopNRow } from './types';
+import type { SurveyRespondent, SurveyItem, AgreementRow, TopNRow, SchoolItemResult, ComparisonRow, ComparisonGroup } from './types';
 
 // ─── Response bucket constants ────────────────────────────────────────────────
 
@@ -194,6 +194,59 @@ export function aggregateTopN(
       top3Pct: row.top3Pct,
     }))
     .sort((a, b) => b.top2Pct - a.top2Pct);
+}
+
+// ─── Comparison aggregation ───────────────────────────────────────────────────
+
+/**
+ * Transforms pre-aggregated Survey_School_Item_Results records into ComparisonRows.
+ *
+ * No heavy computation — school/city/region/network top-N values are already
+ * computed by Airtable. This function just reshapes the data and applies the
+ * comparisonGroups mask so callers only receive the columns they requested.
+ *
+ * Filters to Likert-type items only (itemOrder > 0 and prompt present).
+ * Sorts by itemOrder ascending.
+ *
+ * @param results          Records from fetchSchoolItemResults()
+ * @param comparisonGroups Which comparison columns to populate (null the rest)
+ * @param itemMap          Optional Map<surveyItemRecordId, SurveyItem> for domain lookup
+ */
+export function buildComparisonRows(
+  results: SchoolItemResult[],
+  comparisonGroups: ComparisonGroup[],
+  itemMap?: Map<string, SurveyItem>
+): ComparisonRow[] {
+  const includeCity = comparisonGroups.includes('city');
+  const includeRegion = comparisonGroups.includes('region');
+  const includeNetwork = comparisonGroups.includes('network');
+
+  return results
+    .filter((r) => r.itemOrder > 0 && r.prompt)
+    .sort((a, b) => a.itemOrder - b.itemOrder)
+    .map((r) => {
+      const item = itemMap?.get(r.surveyItemRecordId);
+      const domain = item ? item.categorySelect.join(', ') : '';
+
+      return {
+        questionLabel: r.questionLabel,
+        prompt: r.prompt,
+        domain,
+        itemOrder: r.itemOrder,
+        schoolN: r.schoolN,
+        schoolTop2Pct: r.schoolTop2Pct,
+        schoolTop3Pct: r.schoolTop3Pct,
+        cityN:       includeCity    ? r.cityN       : null,
+        cityTop2Pct: includeCity    ? r.cityTop2Pct : null,
+        cityTop3Pct: includeCity    ? r.cityTop3Pct : null,
+        regionN:       includeRegion ? r.regionN       : null,
+        regionTop2Pct: includeRegion ? r.regionTop2Pct : null,
+        regionTop3Pct: includeRegion ? r.regionTop3Pct : null,
+        networkN:       includeNetwork ? r.networkN       : null,
+        networkTop2Pct: includeNetwork ? r.networkTop2Pct : null,
+        networkTop3Pct: includeNetwork ? r.networkTop3Pct : null,
+      };
+    });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

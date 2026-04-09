@@ -8,7 +8,7 @@
  * Table IDs confirmed from schema registry.
  */
 import Airtable from 'airtable';
-import type { SurveyRespondent, SurveyItem, SurveyItemComment } from './types';
+import type { SurveyRespondent, SurveyItem, SurveyItemComment, SchoolInfo, SchoolItemResult } from './types';
 
 // ─── Environment variables ────────────────────────────────────────────────────
 
@@ -31,6 +31,8 @@ export const TABLE_ITEMS =
   process.env.AIRTABLE_TABLE_ITEMS ?? 'tbl9lguOzNO8VjMvY';
 export const TABLE_COMMENTS =
   process.env.AIRTABLE_TABLE_COMMENTS ?? 'tbla8CWwKDBuQwmtq';
+export const TABLE_SCHOOL_ITEM_RESULTS = 'tblwEdi9EQhCsixNd';
+export const TABLE_SCHOOLS = 'tblTyVLW0R8MxmQ0S';
 
 // ─── Client ───────────────────────────────────────────────────────────────────
 
@@ -137,6 +139,143 @@ export const COMMENT_FIELDS = {
   raceTags: 'Race_Tags',
   respondentLink: 'Respondent_Link',
 } as const;
+
+// ─── Legacy FIELDS alias (kept for backward compatibility) ────────────────────
+
+// ─── Schools field name constants ─────────────────────────────────────────────
+
+export const SCHOOLS_FIELDS = {
+  schoolName: 'School_Name',
+  fullSchoolName: 'Full_School_Name',
+  city: 'City',
+  region: 'Region',
+} as const;
+
+// ─── Survey_School_Item_Results field name constants ──────────────────────────
+
+export const SCHOOL_RESULT_FIELDS = {
+  // Identity
+  schoolTxt: 'School_Txt',
+  administrationKey: 'Administration_Key',
+  cityTxt: 'City_Txt',
+  regionTxt: 'Region_Txt',
+  questionLabel: 'Question_Label_Txt',
+  prompt: 'Question_Prompt',
+  itemOrder: 'Item_Order',
+  surveyItemLink: 'Survey_Item_Link',
+  // School-level results
+  respondents: 'Respondents',
+  percentTop2: 'Percent_Top_2',
+  percentTop3: 'Percent_Top_3',
+  schoolSACount: 'School_Strongly_Agree_Count',
+  schoolAgreeCount: 'School_Agree_Count',
+  schoolNeutralCount: 'School_Neutral_Count',
+  schoolNegativeCount: 'School_Negative_Count',
+  // City comparison (multipleLookupValues — take [0])
+  cityRespondents: 'City_Respondents (from Survey_City_Item_Results_Link)',
+  cityTop2Pct: 'City_Top_2_Percent (from Survey_City_Item_Results_Link)',
+  cityTop3Pct: 'City_Top_3_Percent (from Survey_City_Item_Results_Link)',
+  // Region comparison (multipleLookupValues — take [0])
+  regionRespondents: 'Region_Respondents',
+  regionTop2Pct: 'Region_Top2_Percent',
+  regionTop3Pct: 'Region_Top3_Percent',
+  // Network comparison (multipleLookupValues — take [0])
+  networkRespondents: 'Network_Respondents (from Survey_Network_Item_Results_Link)',
+  networkTop2Pct: 'Network_Top_2_Percent (from Survey_Network_Item_Results_Link)',
+  networkTop3Pct: 'Network_Top_3_Percent (from Survey_Network_Item_Results_Link)',
+} as const;
+
+// ─── Schools fetch helper ─────────────────────────────────────────────────────
+
+/**
+ * Fetch all active Schools with name, city, and region.
+ * Used to populate the school selector and resolve comparison group context.
+ */
+export async function fetchSchools(): Promise<SchoolInfo[]> {
+  const records = await fetchAllRecords(TABLE_SCHOOLS, {
+    fields: Object.values(SCHOOLS_FIELDS),
+    sort: [{ field: SCHOOLS_FIELDS.schoolName, direction: 'asc' }],
+  });
+
+  return records.map((r) => {
+    const f = r.fields as Record<string, unknown>;
+    return {
+      id: r.id,
+      name: String(f[SCHOOLS_FIELDS.schoolName] ?? ''),
+      fullName: String(f[SCHOOLS_FIELDS.fullSchoolName] ?? ''),
+      city: String(f[SCHOOLS_FIELDS.city] ?? ''),
+      region: String(f[SCHOOLS_FIELDS.region] ?? ''),
+    };
+  }).filter((s) => s.name !== '');
+}
+
+// ─── Survey_School_Item_Results fetch helper ──────────────────────────────────
+
+/** Helper: safely extract [0] from a multipleLookupValues array as a number */
+function lookupNum(val: unknown): number {
+  if (Array.isArray(val)) return typeof val[0] === 'number' ? val[0] : parseFloat(String(val[0] ?? '0')) || 0;
+  return typeof val === 'number' ? val : parseFloat(String(val ?? '0')) || 0;
+}
+
+/** Helper: safely extract [0] from a multipleLookupValues array as a string */
+function lookupStr(val: unknown): string {
+  if (Array.isArray(val)) return String(val[0] ?? '');
+  return String(val ?? '');
+}
+
+/**
+ * Fetch Survey_School_Item_Results records for a given school name.
+ *
+ * Filters by School_Txt (singleLineText). Returns all item rows for that school
+ * with school-level results plus pre-rolled city/region/network comparison values.
+ *
+ * @param schoolTxt  Value of School_Txt field — matches the school selector values
+ */
+export async function fetchSchoolItemResults(schoolTxt: string): Promise<SchoolItemResult[]> {
+  const escaped = schoolTxt.replace(/"/g, '\\"');
+  const records = await fetchAllRecords(TABLE_SCHOOL_ITEM_RESULTS, {
+    filterByFormula: `{School_Txt} = "${escaped}"`,
+    fields: Object.values(SCHOOL_RESULT_FIELDS),
+    sort: [{ field: SCHOOL_RESULT_FIELDS.itemOrder, direction: 'asc' }],
+  });
+
+  return records.map((r) => {
+    const f = r.fields as Record<string, unknown>;
+
+    const rawItemLink = f[SCHOOL_RESULT_FIELDS.surveyItemLink];
+    const surveyItemRecordId = Array.isArray(rawItemLink) ? String(rawItemLink[0] ?? '') : '';
+
+    return {
+      id: r.id,
+      schoolTxt: String(f[SCHOOL_RESULT_FIELDS.schoolTxt] ?? ''),
+      administrationKey: String(f[SCHOOL_RESULT_FIELDS.administrationKey] ?? ''),
+      cityTxt: String(f[SCHOOL_RESULT_FIELDS.cityTxt] ?? ''),
+      regionTxt: String(f[SCHOOL_RESULT_FIELDS.regionTxt] ?? ''),
+      questionLabel: String(f[SCHOOL_RESULT_FIELDS.questionLabel] ?? ''),
+      prompt: lookupStr(f[SCHOOL_RESULT_FIELDS.prompt]),
+      itemOrder: typeof f[SCHOOL_RESULT_FIELDS.itemOrder] === 'number'
+        ? (f[SCHOOL_RESULT_FIELDS.itemOrder] as number)
+        : parseInt(String(f[SCHOOL_RESULT_FIELDS.itemOrder] ?? '0'), 10) || 0,
+      surveyItemRecordId,
+      schoolN: lookupNum(f[SCHOOL_RESULT_FIELDS.respondents]),
+      schoolTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.percentTop2]),
+      schoolTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.percentTop3]),
+      schoolSACount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolSACount]),
+      schoolAgreeCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolAgreeCount]),
+      schoolNeutralCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolNeutralCount]),
+      schoolNegativeCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolNegativeCount]),
+      cityN: lookupNum(f[SCHOOL_RESULT_FIELDS.cityRespondents]),
+      cityTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.cityTop2Pct]),
+      cityTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.cityTop3Pct]),
+      regionN: lookupNum(f[SCHOOL_RESULT_FIELDS.regionRespondents]),
+      regionTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.regionTop2Pct]),
+      regionTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.regionTop3Pct]),
+      networkN: lookupNum(f[SCHOOL_RESULT_FIELDS.networkRespondents]),
+      networkTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.networkTop2Pct]),
+      networkTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.networkTop3Pct]),
+    };
+  });
+}
 
 // ─── Legacy FIELDS alias (kept for backward compatibility) ────────────────────
 

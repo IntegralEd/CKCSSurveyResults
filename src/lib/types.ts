@@ -174,9 +174,123 @@ export interface CommentRow {
   itemPrompt?: string;
 }
 
+// ─── Schools lookup ───────────────────────────────────────────────────────────
+
+/**
+ * One row from the Schools table.
+ * Used to populate the school selector and resolve city/region for a selection.
+ *
+ * Airtable field → property:
+ *   School_Name      → name
+ *   Full_School_Name → fullName
+ *   City             → city   (singleSelect)
+ *   Region           → region (singleSelect)
+ */
+export interface SchoolInfo {
+  id: string;        // Airtable record ID
+  name: string;      // School_Name
+  fullName: string;  // Full_School_Name
+  city: string;      // City
+  region: string;    // Region
+}
+
+// ─── Survey_School_Item_Results ───────────────────────────────────────────────
+
+/**
+ * One record from Survey_School_Item_Results — one school × one survey item.
+ *
+ * School-level results are stored directly on the record.
+ * City / Region / Network comparison values arrive as multipleLookupValues
+ * (arrays) rolled up from the linked aggregate tables; we take [0].
+ *
+ * Key Airtable field → property mappings:
+ *   School_Txt                                    → schoolTxt
+ *   Administration_Key                            → administrationKey
+ *   City_Txt                                      → cityTxt
+ *   Region_Txt                                    → regionTxt
+ *   Question_Label_Txt                            → questionLabel
+ *   Question_Prompt                               → prompt          (lookup[0])
+ *   Item_Order                                    → itemOrder       (number)
+ *   Survey_Item_Link                              → surveyItemRecordId (link[0])
+ *   Respondents                                   → schoolN
+ *   Percent_Top_2                                 → schoolTop2Pct
+ *   Percent_Top_3                                 → schoolTop3Pct
+ *   School_Strongly_Agree_Count                   → schoolSACount
+ *   School_Agree_Count                            → schoolAgreeCount
+ *   School_Neutral_Count                          → schoolNeutralCount
+ *   School_Negative_Count                         → schoolNegativeCount
+ *   City_Respondents (from Survey_City_…)         → cityN            (lookup[0])
+ *   City_Top_2_Percent (from Survey_City_…)       → cityTop2Pct      (lookup[0])
+ *   City_Top_3_Percent (from Survey_City_…)       → cityTop3Pct      (lookup[0])
+ *   Region_Respondents                            → regionN          (lookup[0])
+ *   Region_Top2_Percent                           → regionTop2Pct    (lookup[0])
+ *   Region_Top3_Percent                           → regionTop3Pct    (lookup[0])
+ *   Network_Respondents (from Survey_Network_…)   → networkN         (lookup[0])
+ *   Network_Top_2_Percent (from Survey_Network_…) → networkTop2Pct   (lookup[0])
+ *   Network_Top_3_Percent (from Survey_Network_…) → networkTop3Pct   (lookup[0])
+ */
+export interface SchoolItemResult {
+  id: string;
+  schoolTxt: string;
+  administrationKey: string;
+  cityTxt: string;
+  regionTxt: string;
+  questionLabel: string;
+  prompt: string;
+  itemOrder: number;
+  surveyItemRecordId: string;
+  // School-level
+  schoolN: number;
+  schoolTop2Pct: number;
+  schoolTop3Pct: number;
+  schoolSACount: number;
+  schoolAgreeCount: number;
+  schoolNeutralCount: number;
+  schoolNegativeCount: number;
+  // City comparison
+  cityN: number;
+  cityTop2Pct: number;
+  cityTop3Pct: number;
+  // Region comparison
+  regionN: number;
+  regionTop2Pct: number;
+  regionTop3Pct: number;
+  // Network comparison
+  networkN: number;
+  networkTop2Pct: number;
+  networkTop3Pct: number;
+}
+
+/**
+ * One display row in comparison mode.
+ * Includes school results alongside whichever comparison groups were requested.
+ */
+export interface ComparisonRow {
+  questionLabel: string;
+  prompt: string;
+  domain: string;
+  itemOrder: number;
+  // School
+  schoolN: number;
+  schoolTop2Pct: number;
+  schoolTop3Pct: number;
+  // Optional comparison groups — null when that group was not requested
+  cityN: number | null;
+  cityTop2Pct: number | null;
+  cityTop3Pct: number | null;
+  regionN: number | null;
+  regionTop2Pct: number | null;
+  regionTop3Pct: number | null;
+  networkN: number | null;
+  networkTop2Pct: number | null;
+  networkTop3Pct: number | null;
+}
+
+export type ComparisonGroup = 'city' | 'region' | 'network';
+
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
-export type ResultMode = 'agreement' | 'topn' | 'comments';
+export type ResultMode = 'agreement' | 'topn' | 'comments' | 'comparison';
 
 // ─── API request/response shapes ─────────────────────────────────────────────
 
