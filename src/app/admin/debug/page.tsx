@@ -49,7 +49,8 @@ export default async function DebugPage() {
 
   try {
     const allItems = await fetchItems();
-    firstItems = allItems.slice(0, 5);
+    // Show first 5 Likert items — Metadata/Demographic items have no response data
+    firstItems = allItems.filter((i) => i.questionType === 'Likert').slice(0, 5);
   } catch (e) {
     itemsError = String(e);
   }

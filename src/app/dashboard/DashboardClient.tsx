@@ -34,7 +34,7 @@ const TOPN_COLUMNS = [
 
 const COMMENTS_COLUMNS = [
   { key: 'administration', label: 'Administration' },
-  { key: 'school', label: 'School' },
+  { key: 'school', label: 'Region' },
   { key: 'prompt', label: 'Prompt' },
   { key: 'commentText', label: 'Response' },
 ];

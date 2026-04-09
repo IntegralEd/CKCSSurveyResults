@@ -75,7 +75,7 @@ export async function getComments(
 
     rows.push({
       respondentLink: comment.respondentLink,
-      school: comment.schoolName ?? '',
+      school: comment.regionFromSchool ?? '',
       administration: comment.surveyAdmin,
       questionLabel,
       prompt,

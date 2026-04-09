@@ -44,12 +44,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       getSurveyItems(),
     ]);
 
+    // Only aggregate Likert-scale items — exclude Metadata and Demographic types
+    // which have no response data in Survey_Respondents.
+    const likertItems = allItems.filter((i) => i.questionType === 'Likert');
+
     // Apply domain filter to items if specified.
     // categorySelect is a string[] — pass if any category matches a selected domain.
     const items =
       filters.domain.length > 0
-        ? allItems.filter((i) => i.categorySelect.some((c) => filters.domain.includes(c)))
-        : allItems;
+        ? likertItems.filter((i) => i.categorySelect.some((c) => filters.domain.includes(c)))
+        : likertItems;
 
     const rows =
       mode === 'agreement'
