@@ -303,12 +303,16 @@ export interface HistoryRow {
   questionLabel: string;
   prompt: string;
   domain: string;
+  // Admin A
   aN: number;
+  aTop1Pct: number;
   aTop2Pct: number;
+  aTop3Pct: number;
+  // Admin B
   bN: number | null;
+  bTop1Pct: number | null;
   bTop2Pct: number | null;
-  /** bTop2Pct − aTop2Pct, null if bTop2Pct is null */
-  delta: number | null;
+  bTop3Pct: number | null;
 }
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────

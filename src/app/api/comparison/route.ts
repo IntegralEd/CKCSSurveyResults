@@ -19,9 +19,10 @@ import type { ComparisonGroup } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 interface ComparisonRequestBody {
-  schoolTxt: string;  // School_Txt value from Survey_School_Item_Results (= SchoolInfo.name)
+  schoolTxt: string;        // School_Txt value from Survey_School_Item_Results (= SchoolInfo.name)
   comparisonGroups: ComparisonGroup[];
   domain?: string[];
+  administration?: string;  // Administration_Key to filter; dedup applied as safety net
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { schoolTxt, comparisonGroups, domain = [] } = body;
+  const { schoolTxt, comparisonGroups, domain = [], administration } = body;
 
   if (!schoolTxt) {
     return NextResponse.json(
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ]);
 
     // Apply optional domain filter
-    const filtered =
+    let filtered =
       domain.length > 0
         ? rawResults.filter((r) => {
             const item = itemMapById.get(r.surveyItemRecordId);
@@ -69,6 +70,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               : false;
           })
         : rawResults;
+
+    // Filter by administration when provided, then deduplicate by questionLabel.
+    // Survey_School_Item_Results has one row per school × item × administration,
+    // so without filtering the same item appears once per administration.
+    if (administration) {
+      const adminFiltered = filtered.filter(
+        (r) => !r.administrationKey || r.administrationKey === administration
+      );
+      // Fall back to all records if key format doesn't match (e.g. record ID vs label)
+      if (adminFiltered.length > 0) filtered = adminFiltered;
+    }
+    // Dedup: keep first occurrence per questionLabel (results already sorted by itemOrder asc)
+    const seen = new Set<string>();
+    filtered = filtered.filter((r) => {
+      if (seen.has(r.questionLabel)) return false;
+      seen.add(r.questionLabel);
+      return true;
+    });
 
     const rows = buildComparisonRows(
       filtered,

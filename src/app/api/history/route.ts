@@ -57,17 +57,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const history: HistoryRow[] = rowsA.map((a) => {
       const b = mapB.get(a.questionLabel) ?? null;
-      const bTop2Pct = b ? b.top2Pct : null;
       return {
         itemOrder: a.itemOrder,
         questionLabel: a.questionLabel,
         prompt: a.prompt,
         domain: a.domain,
         aN: a.n,
+        aTop1Pct: a.stronglyAgreePct,
         aTop2Pct: a.top2Pct,
+        aTop3Pct: a.top3Pct,
         bN: b ? b.n : null,
-        bTop2Pct,
-        delta: bTop2Pct !== null ? Math.round((bTop2Pct - a.top2Pct) * 10) / 10 : null,
+        bTop1Pct: b ? b.stronglyAgreePct : null,
+        bTop2Pct: b ? b.top2Pct : null,
+        bTop3Pct: b ? b.top3Pct : null,
       };
     });
 

@@ -133,7 +133,7 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
                     : String(val);
 
                   const isWide = col.key === 'prompt' || col.key === 'commentText';
-                  const isTopN = ['top2Pct','top3Pct','schoolTop2Pct','cityTop2Pct','regionTop2Pct','networkTop2Pct'].includes(col.key);
+                  const isTopN = isPct;
                   const isOrder = col.key === 'itemOrder';
 
                   return (

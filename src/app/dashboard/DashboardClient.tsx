@@ -71,13 +71,17 @@ const ALL_COMPARISON_GROUPS: { value: ComparisonGroup; label: string }[] = [
 
 function historyColumns(adminA: string, adminB: string) {
   return [
-    { key: 'itemOrder',  label: '#',                   width: '40px',  minWidth: '40px' },
-    { key: 'prompt',     label: 'Item',                width: '320px', minWidth: '240px' },
-    { key: 'aN',         label: 'N',                   width: '70px' },
-    { key: 'aTop2Pct',   label: `${adminA} Top 2 %`,   width: '130px' },
-    { key: 'bTop2Pct',   label: `${adminB} Top 2 %`,   width: '130px' },
-    { key: 'delta',      label: 'Change',              width: '80px' },
-    { key: 'domain',     label: 'Domain',              width: '120px' },
+    { key: 'itemOrder', label: '#',    width: '40px',  minWidth: '40px' },
+    { key: 'prompt',    label: 'Item', width: '320px', minWidth: '240px' },
+    { key: 'aN',       label: 'N',       width: '64px', group: adminA, groupStart: true },
+    { key: 'aTop1Pct', label: 'Top 1 %', width: '80px', group: adminA },
+    { key: 'aTop2Pct', label: 'Top 2 %', width: '80px', group: adminA },
+    { key: 'aTop3Pct', label: 'Top 3 %', width: '80px', group: adminA },
+    { key: 'bN',       label: 'N',       width: '64px', group: adminB, groupStart: true },
+    { key: 'bTop1Pct', label: 'Top 1 %', width: '80px', group: adminB },
+    { key: 'bTop2Pct', label: 'Top 2 %', width: '80px', group: adminB },
+    { key: 'bTop3Pct', label: 'Top 3 %', width: '80px', group: adminB },
+    { key: 'domain',   label: 'Domain',  width: '120px' },
   ];
 }
 
@@ -171,6 +175,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             schoolTxt: selectedSchool.name,
             comparisonGroups,
             domain: formFilters.domain,
+            administration: adminA,
           }),
         });
         if (!res.ok) {
@@ -439,7 +444,13 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           <DownloadButton
             rows={rowsAsRecords}
             columns={columns}
-            filename={`ckcs-${mode}.csv`}
+            filename={
+              mode === 'comparison'
+                ? csvFilename(selectedSchool?.name, loadedAdminA, 'comparison')
+                : mode === 'history'
+                  ? csvFilename(selectedSchool?.name, loadedAdminA, 'vs', loadedAdminB)
+                  : csvFilename(selectedSchool?.name ?? 'all', loadedAdminA, 'comments')
+            }
             disabled={!rows || rows.length === 0}
           />
         </div>
@@ -513,6 +524,20 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Build a CSV filename: slug of parts + MMDDYY date. */
+function csvFilename(...parts: (string | null | undefined)[]): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  const slug = parts
+    .filter(Boolean)
+    .join('_')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+  return `${slug}_${mm}${dd}${yy}.csv`;
+}
 
 /** Merge primary form filters with post-load secondary demographic filters. */
 function mergeFilters(primary: ActiveFilters, secondary: ActiveFilters): ActiveFilters {
