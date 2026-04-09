@@ -188,25 +188,41 @@ export const SCHOOL_RESULT_FIELDS = {
 // ─── Schools fetch helper ─────────────────────────────────────────────────────
 
 /**
- * Fetch all active Schools with name, city, and region.
- * Used to populate the school selector and resolve comparison group context.
+ * Fetch schools that actually have records in Survey_School_Item_Results.
+ *
+ * Queries Survey_School_Item_Results (not the Schools table) for the minimal
+ * fields needed to build the school selector. Deduplicates by the linked
+ * school record ID so the selector only shows schools with result data.
+ *
+ * City and Region come from the pre-rolled lookup fields on the results table
+ * so no second fetch against the Schools table is needed.
  */
 export async function fetchSchools(): Promise<SchoolInfo[]> {
-  const records = await fetchAllRecords(TABLE_SCHOOLS, {
-    fields: Object.values(SCHOOLS_FIELDS),
-    sort: [{ field: SCHOOLS_FIELDS.schoolName, direction: 'asc' }],
+  const records = await fetchAllRecords(TABLE_SCHOOL_ITEM_RESULTS, {
+    fields: ['Schools', 'School_Txt', 'City_Txt', 'Region_Txt'],
   });
 
-  return records.map((r) => {
+  const seen = new Map<string, SchoolInfo>();
+
+  for (const r of records) {
     const f = r.fields as Record<string, unknown>;
-    return {
-      id: r.id,
-      name: String(f[SCHOOLS_FIELDS.schoolName] ?? ''),
-      fullName: String(f[SCHOOLS_FIELDS.fullSchoolName] ?? ''),
-      city: String(f[SCHOOLS_FIELDS.city] ?? ''),
-      region: String(f[SCHOOLS_FIELDS.region] ?? ''),
-    };
-  }).filter((s) => s.name !== '');
+    const rawSchools = f['Schools'];
+    const schoolRecordId = Array.isArray(rawSchools) ? String(rawSchools[0] ?? '') : '';
+    if (!schoolRecordId || seen.has(schoolRecordId)) continue;
+
+    const name = String(f['School_Txt'] ?? '').trim();
+    if (!name) continue;
+
+    seen.set(schoolRecordId, {
+      id: schoolRecordId,
+      name,
+      fullName: name,
+      city: String(f['City_Txt'] ?? ''),
+      region: String(f['Region_Txt'] ?? ''),
+    });
+  }
+
+  return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ─── Survey_School_Item_Results fetch helper ──────────────────────────────────
