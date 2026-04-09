@@ -103,22 +103,20 @@ export async function filterRespondents(
   });
 
   // Collect the response field names to fetch (Question_Label values).
-  // Also include the pre-computed top-N indicator fields for each item.
+  // Note: _Top2 / _Top3 indicator fields are NOT listed here — Airtable throws
+  // if any requested field name doesn't exist and those fields may be absent
+  // on some tables. Top-N is computed from raw bucket counts as fallback.
   const responseFieldNames: string[] = [];
   for (const item of includedItems) {
     if (item.questionLabel) {
       responseFieldNames.push(item.questionLabel);
-      responseFieldNames.push(`${item.questionLabel}_Top2`);
-      responseFieldNames.push(`${item.questionLabel}_Top3`);
     }
   }
 
-  const fieldsToFetch = [
-    ...SLICER_FIELD_NAMES,
-    ...responseFieldNames,
-  ];
-
-  const respondents = await fetchRespondents(fieldsToFetch);
+  // Fetch all respondents without a field projection so Airtable returns
+  // whatever columns exist (avoids hard errors on missing _Top2/_Top3 fields).
+  // SLICER_FIELD_NAMES are always present; response columns vary by table.
+  const respondents = await fetchRespondents();
 
   return respondents.filter((r) => {
     if (filters.administration.length > 0 &&

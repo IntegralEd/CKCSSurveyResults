@@ -13,7 +13,9 @@
  * NOTE: This page is intentionally unprotected for development.
  *   Remove or gate it before sharing the URL publicly.
  */
-import { getFilterOptions } from '@/lib/filters';
+import { getFilterOptions, filterRespondents } from '@/lib/filters';
+import { getSurveyItems } from '@/lib/items';
+import { aggregateAgreement } from '@/lib/aggregation';
 import {
   fetchItems,
   fetchRespondents,
@@ -41,6 +43,9 @@ export default async function DebugPage() {
   let sampleComments: Awaited<ReturnType<typeof fetchComments>> = [];
   let commentsError: string | null = null;
 
+  let agreementProbe: { rowCount: number; firstRow: unknown } | null = null;
+  let agreementError: string | null = null;
+
   try {
     filterOptions = await getFilterOptions();
   } catch (e) {
@@ -66,6 +71,22 @@ export default async function DebugPage() {
     sampleComments = await fetchComments([], 5);
   } catch (e) {
     commentsError = String(e);
+  }
+
+  try {
+    const EMPTY_FILTERS = {
+      administration: [], school: [], region: [],
+      race: [], gender: [], grade: [], domain: [],
+    };
+    const [respondents, allItems] = await Promise.all([
+      filterRespondents(EMPTY_FILTERS),
+      getSurveyItems(),
+    ]);
+    const likertItems = allItems.filter((i) => i.questionType === 'Likert');
+    const rows = aggregateAgreement(respondents, likertItems);
+    agreementProbe = { rowCount: rows.length, firstRow: rows[0] ?? null };
+  } catch (e) {
+    agreementError = e instanceof Error ? e.message : String(e);
   }
 
   return (
@@ -188,6 +209,22 @@ export default async function DebugPage() {
         ) : (
           <pre className="bg-slate-50 border border-slate-200 rounded p-4 text-xs overflow-auto">
             {JSON.stringify(sampleComments, null, 2)}
+          </pre>
+        )}
+      </section>
+
+      {/* ── Section 5: Agreement aggregation probe ────────────────────── */}
+      <section>
+        <h2 className="text-base font-semibold text-[#17345B] mb-1">
+          5. Agreement Aggregation Probe (no filters, Likert items only)
+        </h2>
+        {agreementError ? (
+          <pre className="bg-red-50 border border-red-200 text-red-700 rounded p-4 text-xs overflow-auto">
+            {agreementError}
+          </pre>
+        ) : (
+          <pre className="bg-slate-50 border border-slate-200 rounded p-4 text-xs overflow-auto">
+            {JSON.stringify(agreementProbe, null, 2)}
           </pre>
         )}
       </section>

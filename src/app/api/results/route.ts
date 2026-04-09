@@ -62,9 +62,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(rows);
   } catch (err) {
-    console.error('[POST /api/results]', err);
+    const detail = err instanceof Error
+      ? { message: err.message, stack: err.stack }
+      : String(err);
+    console.error('[POST /api/results]', detail);
     return NextResponse.json(
-      { error: 'Aggregation failed', detail: String(err) },
+      { error: 'Aggregation failed', detail },
       { status: 500 }
     );
   }
