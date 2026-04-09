@@ -9,9 +9,7 @@ interface Props {
 }
 
 const BASE_TABS: { mode: ResultMode; label: string }[] = [
-  { mode: 'agreement', label: 'Agreement' },
-  { mode: 'topn',      label: 'Top 2/3' },
-  { mode: 'comments',  label: 'Open Responses' },
+  { mode: 'comments', label: 'Open Responses' },
 ];
 
 const COMPARISON_TAB: { mode: ResultMode; label: string } = {

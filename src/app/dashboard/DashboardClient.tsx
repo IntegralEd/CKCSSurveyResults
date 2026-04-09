@@ -9,8 +9,6 @@ import type {
   FilterOptions,
   ActiveFilters,
   ResultMode,
-  AgreementRow,
-  TopNRow,
   CommentRow,
   ComparisonRow,
   ComparisonGroup,
@@ -19,49 +17,34 @@ import type {
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
-const AGREEMENT_COLUMNS = [
-  { key: 'prompt',        label: 'Item' },
-  { key: 'domain',        label: 'Domain' },
-  { key: 'n',             label: 'N' },
-  { key: 'top2Pct',       label: 'Top 2 %' },
-  { key: 'top3Pct',       label: 'Top 3 %' },
-];
-
-const TOPN_COLUMNS = [
-  { key: 'prompt',        label: 'Item' },
-  { key: 'domain',        label: 'Domain' },
-  { key: 'n',             label: 'N' },
-  { key: 'top2Pct',       label: 'Top 2 %' },
-  { key: 'top3Pct',       label: 'Top 3 %' },
-];
-
 const COMMENTS_COLUMNS = [
-  { key: 'administration', label: 'Administration' },
-  { key: 'school',         label: 'Region' },
-  { key: 'prompt',         label: 'Item' },
-  { key: 'commentText',    label: 'Response' },
+  { key: 'administration', label: 'Administration', width: '120px' },
+  { key: 'school',         label: 'Region',         width: '120px' },
+  { key: 'prompt',         label: 'Item',           width: '320px', minWidth: '240px' },
+  { key: 'commentText',    label: 'Response',       width: '400px', minWidth: '280px' },
 ];
 
 function comparisonColumns(groups: ComparisonGroup[]) {
   const cols = [
-    { key: 'prompt',         label: 'Item' },
-    { key: 'domain',         label: 'Domain' },
-    { key: 'schoolN',        label: 'School N' },
-    { key: 'schoolTop2Pct',  label: 'School Top 2 %' },
-    { key: 'schoolTop3Pct',  label: 'School Top 3 %' },
+    { key: 'itemOrder',      label: '#',             width: '40px',  minWidth: '40px' },
+    { key: 'prompt',         label: 'Item',          width: '320px', minWidth: '240px' },
+    { key: 'schoolN',        label: 'School N',      width: '80px' },
+    { key: 'schoolTop2Pct',  label: 'School Top 2 %', width: '110px' },
+    { key: 'schoolTop3Pct',  label: 'School Top 3 %', width: '110px' },
   ];
   if (groups.includes('city')) {
-    cols.push({ key: 'cityN', label: 'City N' });
-    cols.push({ key: 'cityTop2Pct', label: 'City Top 2 %' });
+    cols.push({ key: 'cityN',       label: 'City N',      width: '80px' });
+    cols.push({ key: 'cityTop2Pct', label: 'City Top 2 %', width: '110px' });
   }
   if (groups.includes('region')) {
-    cols.push({ key: 'regionN', label: 'Region N' });
-    cols.push({ key: 'regionTop2Pct', label: 'Region Top 2 %' });
+    cols.push({ key: 'regionN',       label: 'Region N',      width: '80px' });
+    cols.push({ key: 'regionTop2Pct', label: 'Region Top 2 %', width: '110px' });
   }
   if (groups.includes('network')) {
-    cols.push({ key: 'networkN', label: 'Network N' });
-    cols.push({ key: 'networkTop2Pct', label: 'Network Top 2 %' });
+    cols.push({ key: 'networkN',       label: 'Network N',      width: '80px' });
+    cols.push({ key: 'networkTop2Pct', label: 'Network Top 2 %', width: '110px' });
   }
+  cols.push({ key: 'domain', label: 'Domain', width: '120px' });
   return cols;
 }
 
@@ -81,7 +64,7 @@ const ALL_COMPARISON_GROUPS: { value: ComparisonGroup; label: string }[] = [
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase = 'form' | 'results';
-type AnyRow = AgreementRow | TopNRow | CommentRow | ComparisonRow;
+type AnyRow = CommentRow | ComparisonRow;
 
 interface Props {
   filterOptions: FilterOptions;
@@ -98,12 +81,10 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
   // ── Results state ───────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('form');
-  const [mode, setMode] = useState<ResultMode>('agreement');
+  const [mode, setMode] = useState<ResultMode>('comments');
   const [rows, setRows] = useState<AnyRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [respondentCount, setRespondentCount] = useState<number | null>(null);
-
   // ── Secondary filters (applied after initial load) ──────────────────────────
   const [secondaryFilters, setSecondaryFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
@@ -166,10 +147,13 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           throw new Error(body.detail?.message ?? body.error ?? `HTTP ${res.status}`);
         }
         setRows(await res.json());
-        setRespondentCount(null);
 
-      } else if (targetMode === 'comments') {
-        const filters = mergeFilters(formFilters, secondary);
+      } else {
+        // comments
+        const base = mergeFilters(formFilters, secondary);
+        const filters = selectedSchool
+          ? { ...base, school: [selectedSchool.name] }
+          : base;
         const res = await fetch('/api/comments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -180,22 +164,6 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           throw new Error(body.detail?.message ?? body.error ?? `HTTP ${res.status}`);
         }
         setRows(await res.json());
-        setRespondentCount(null);
-
-      } else {
-        const filters = mergeFilters(formFilters, secondary);
-        const res = await fetch('/api/results', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filters, mode: targetMode }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.detail?.message ?? body.error ?? `HTTP ${res.status}`);
-        }
-        const data: AgreementRow[] | TopNRow[] = await res.json();
-        setRows(data);
-        setRespondentCount(data.length > 0 ? (data[0] as AgreementRow).n ?? null : 0);
       }
     } catch (err) {
       setError(String(err));
@@ -209,7 +177,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
   async function handleLoad() {
     const initialMode: ResultMode =
-      schoolSelected && comparisonGroups.length > 0 ? 'comparison' : 'agreement';
+      schoolSelected && comparisonGroups.length > 0 ? 'comparison' : 'comments';
     setMode(initialMode);
     setSecondaryFilters(EMPTY_FILTERS);
     setPhase('results');
@@ -230,17 +198,13 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     setPhase('form');
     setRows(null);
     setError(null);
-    setRespondentCount(null);
     setSecondaryFilters(EMPTY_FILTERS);
   }
 
   // ── Columns ──────────────────────────────────────────────────────────────────
 
   const columns =
-    mode === 'comments'    ? COMMENTS_COLUMNS :
-    mode === 'comparison'  ? comparisonColumns(comparisonGroups) :
-    mode === 'topn'        ? TOPN_COLUMNS :
-    AGREEMENT_COLUMNS;
+    mode === 'comparison' ? comparisonColumns(comparisonGroups) : COMMENTS_COLUMNS;
 
   const rowsAsRecords = (rows ?? []) as unknown as Record<string, unknown>[];
 
@@ -377,11 +341,6 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           onChange={handleModeChange}
           showComparison={schoolSelected && comparisonGroups.length > 0}
         />
-        {respondentCount !== null && mode !== 'comments' && mode !== 'comparison' && (
-          <span className="text-xs text-slate-500 bg-slate-100 rounded-full px-3 py-1">
-            N = {respondentCount.toLocaleString()}
-          </span>
-        )}
         <div className="ml-auto">
           <DownloadButton
             rows={rowsAsRecords}
@@ -443,7 +402,11 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
       {/* Results table */}
       {!loading && !error && rows !== null && rows.length > 0 && (
-        <ResultsTable columns={columns} rows={rowsAsRecords} sortable />
+        <ResultsTable
+          columns={columns}
+          rows={rowsAsRecords}
+          defaultSortKey={mode === 'comparison' ? 'itemOrder' : undefined}
+        />
       )}
     </div>
   );
