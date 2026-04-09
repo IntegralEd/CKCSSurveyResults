@@ -36,6 +36,16 @@ export const RESPONSE_BUCKETS = [
 
 export type ResponseBucket = typeof RESPONSE_BUCKETS[number];
 
+// Normalized (uppercased) bucket keys for case-insensitive matching.
+// Response values are uppercased before comparison so that casing differences
+// between administrations ("Strongly Agree" vs "Strongly agree") are ignored.
+const BUCKET_UPPER: Record<string, ResponseBucket> = {
+  'STRONGLY AGREE': 'Strongly Agree',
+  'AGREE': 'Agree',
+  'NEUTRAL': 'Neutral',
+  'NEGATIVE': 'Negative',
+};
+
 /** Top-2 = Strongly Agree + Agree */
 export const TOP_2_BUCKETS: ResponseBucket[] = ['Strongly Agree', 'Agree'];
 
@@ -89,7 +99,8 @@ export function aggregateAgreement(
         blankCount++;
       } else {
         n++;
-        switch (rawStr) {
+        const bucket = BUCKET_UPPER[rawStr.toUpperCase()];
+        switch (bucket) {
           case 'Strongly Agree': stronglyAgreeCount++; break;
           case 'Agree':          agreeCount++;          break;
           case 'Neutral':        neutralCount++;        break;
