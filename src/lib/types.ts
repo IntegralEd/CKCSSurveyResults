@@ -317,7 +317,7 @@ export interface HistoryRow {
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
-export type ResultMode = 'agreement' | 'topn' | 'comments' | 'comparison' | 'history';
+export type ResultMode = 'agreement' | 'topn' | 'comments' | 'comparison' | 'charts' | 'history';
 
 // ─── API request/response shapes ─────────────────────────────────────────────
 

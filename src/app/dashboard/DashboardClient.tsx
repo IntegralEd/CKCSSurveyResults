@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import TabToggle from '@/components/TabToggle';
 import ResultsTable from '@/components/ResultsTable';
+import ChartPanel from '@/components/ChartPanel';
 import DownloadButton from '@/components/DownloadButton';
 import MultiSelect from '@/components/MultiSelect';
 import type {
@@ -167,7 +168,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     setError(null);
 
     try {
-      if (targetMode === 'comparison' && selectedSchool) {
+      if ((targetMode === 'comparison' || targetMode === 'charts') && selectedSchool) {
         const res = await fetch('/api/comparison', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -267,8 +268,8 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   // ── Columns ──────────────────────────────────────────────────────────────────
 
   const columns =
-    mode === 'comparison' ? comparisonColumns(comparisonGroups) :
-    mode === 'history'    ? historyColumns(loadedAdminA, loadedAdminB) :
+    mode === 'comparison' || mode === 'charts' ? comparisonColumns(comparisonGroups) :
+    mode === 'history'                         ? historyColumns(loadedAdminA, loadedAdminB) :
     COMMENTS_COLUMNS;
 
   const rowsAsRecords = (rows ?? []) as unknown as Record<string, unknown>[];
@@ -364,17 +365,36 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           </div>
         </div>
 
-        {/* ── 3. Domain filter ── */}
-        <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5">
-          <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide mb-3">
-            Domain <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
-          </h2>
-          <MultiSelect
-            label="Domain"
-            options={filterOptions.domain}
-            selected={formFilters.domain}
-            onChange={(v) => setFormFilters((f) => ({ ...f, domain: v }))}
-          />
+        {/* ── 3. Respondent filters (domain, gender, race) ── */}
+        <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide mb-1">
+              Filters <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Gender and race apply to Open Responses and History. Pre-aggregated school results are not filtered by demographics.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <MultiSelect
+              label="Domain"
+              options={filterOptions.domain}
+              selected={formFilters.domain}
+              onChange={(v) => setFormFilters((f) => ({ ...f, domain: v }))}
+            />
+            <MultiSelect
+              label="Gender"
+              options={filterOptions.gender}
+              selected={formFilters.gender}
+              onChange={(v) => setFormFilters((f) => ({ ...f, gender: v }))}
+            />
+            <MultiSelect
+              label="Race"
+              options={filterOptions.race}
+              selected={formFilters.race}
+              onChange={(v) => setFormFilters((f) => ({ ...f, race: v }))}
+            />
+          </div>
         </div>
 
         {/* ── Load button ── */}
@@ -423,6 +443,16 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             vs {g.charAt(0).toUpperCase() + g.slice(1)}
           </span>
         ))}
+        {formFilters.gender.map((g) => (
+          <span key={g} className="bg-slate-100 text-slate-600 rounded-full px-3 py-1 text-xs">
+            {g}
+          </span>
+        ))}
+        {formFilters.race.map((r) => (
+          <span key={r} className="bg-slate-100 text-slate-600 rounded-full px-3 py-1 text-xs">
+            {r}
+          </span>
+        ))}
         <button
           type="button"
           onClick={handleReset}
@@ -445,13 +475,13 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             rows={rowsAsRecords}
             columns={columns}
             filename={
-              mode === 'comparison'
+              mode === 'comparison' || mode === 'charts'
                 ? csvFilename(selectedSchool?.name, loadedAdminA, 'comparison')
                 : mode === 'history'
                   ? csvFilename(selectedSchool?.name, loadedAdminA, 'vs', loadedAdminB)
                   : csvFilename(selectedSchool?.name ?? 'all', loadedAdminA, 'comments')
             }
-            disabled={!rows || rows.length === 0}
+            disabled={!rows || rows.length === 0 || mode === 'charts'}
           />
         </div>
       </div>
@@ -498,6 +528,17 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         </div>
       )}
 
+      {/* Pre-aggregation note — shown when gender/race filters are active in comparison/charts */}
+      {(mode === 'comparison' || mode === 'charts') &&
+        (formFilters.gender.length > 0 || formFilters.race.length > 0) && (
+        <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+          <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 4zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+          </svg>
+          Gender and race filters are not applied to pre-aggregated school results (Table and Charts views). They apply only to Open Responses and History.
+        </div>
+      )}
+
       {/* Status */}
       {loading && (
         <div className="py-12 text-center text-slate-500 text-sm">Loading results…</div>
@@ -511,8 +552,17 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         </div>
       )}
 
-      {/* Results table */}
-      {!loading && !error && rows !== null && rows.length > 0 && (
+      {/* Charts view */}
+      {!loading && !error && rows !== null && rows.length > 0 && mode === 'charts' && (
+        <ChartPanel
+          rows={rows as import('@/lib/types').ComparisonRow[]}
+          groups={comparisonGroups}
+          schoolName={selectedSchool?.name ?? 'School'}
+        />
+      )}
+
+      {/* Table view — all modes except charts */}
+      {!loading && !error && rows !== null && rows.length > 0 && mode !== 'charts' && (
         <ResultsTable
           columns={columns}
           rows={rowsAsRecords}

@@ -13,13 +13,14 @@ const BASE_TABS: { mode: ResultMode; label: string }[] = [
   { mode: 'comments', label: 'Open Responses' },
 ];
 
-const COMPARISON_TAB: { mode: ResultMode; label: string } = { mode: 'comparison', label: 'Comparison' };
+const COMPARISON_TAB: { mode: ResultMode; label: string } = { mode: 'comparison', label: 'Table' };
+const CHARTS_TAB:     { mode: ResultMode; label: string } = { mode: 'charts',     label: 'Charts' };
 const HISTORY_TAB:    { mode: ResultMode; label: string } = { mode: 'history',    label: 'History' };
 
 export default function TabToggle({ mode, onChange, showComparison = false, showHistory = false }: Props) {
   const tabs = [
-    ...(showComparison ? [COMPARISON_TAB] : []),
-    ...(showHistory    ? [HISTORY_TAB]    : []),
+    ...(showComparison ? [COMPARISON_TAB, CHARTS_TAB] : []),
+    ...(showHistory    ? [HISTORY_TAB]                : []),
     ...BASE_TABS,
   ];
 
