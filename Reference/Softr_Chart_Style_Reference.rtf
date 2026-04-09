@@ -1,0 +1,372 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue255;\red255\green255\blue254;\red0\green0\blue0;
+\red144\green1\blue18;\red19\green118\blue70;\red14\green110\blue109;\red107\green0\blue1;\red15\green112\blue1;
+}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c100000;\cssrgb\c100000\c100000\c99608;\cssrgb\c0\c0\c0;
+\cssrgb\c63922\c8235\c8235;\cssrgb\c3529\c52549\c34510;\cssrgb\c0\c50196\c50196;\cssrgb\c50196\c0\c0;\cssrgb\c0\c50196\c0;
+}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs28 \cf2 \cb3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 import\cf0 \strokec4  \{ useRecord, useCurrentRecordId, q \} \cf2 \strokec2 from\cf0 \strokec4  \cf5 \strokec5 "@/lib/datasource"\cf0 \strokec4 ;\cb1 \
+\
+\cf2 \cb3 \strokec2 const\cf0 \strokec4  select = q.select(\{\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   stronglyAgree: \cf5 \strokec5 "School_Strongly_Agree_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   agree: \cf5 \strokec5 "School_Agree_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   neutral: \cf5 \strokec5 "School_Neutral_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   negative: \cf5 \strokec5 "School_Negative_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   total: \cf5 \strokec5 "Item_Responses"\cf0 \strokec4 ,\cb1 \
+\cb3   regionStronglyAgree: \cf5 \strokec5 "Region_Strongly_Agree_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   regionAgree: \cf5 \strokec5 "Region_Agree_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   regionNeutral: \cf5 \strokec5 "Region_Neutral_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   regionNegative: \cf5 \strokec5 "Region_Negative_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   regionTotal: \cf5 \strokec5 "Region_Respondents"\cf0 \strokec4 ,\cb1 \
+\cb3   networkStronglyAgree: \cf5 \strokec5 "Network_Strongly_Agree_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   networkAgree: \cf5 \strokec5 "Network_Agree_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   networkNeutral: \cf5 \strokec5 "Network_Neutral_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   networkNegative: \cf5 \strokec5 "Network_Negative_Count"\cf0 \strokec4 ,\cb1 \
+\cb3   networkTotal: \cf5 \strokec5 "Network_Item_Responses"\cf0 \strokec4 ,\cb1 \
+\cb3 \});\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 function\cf0 \strokec4  parseNumber(v: any): number \{\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 if\cf0 \strokec4  (v == \cf2 \strokec2 null\cf0 \strokec4  || v === \cf5 \strokec5 ""\cf0 \strokec4 ) \cf2 \strokec2 return\cf0 \strokec4  \cf6 \strokec6 0\cf0 \strokec4 ;\cb1 \
+\cb3   \cf2 \strokec2 if\cf0 \strokec4  (\cf2 \strokec2 typeof\cf0 \strokec4  v === \cf5 \strokec5 "number"\cf0 \strokec4 ) \cf2 \strokec2 return\cf0 \strokec4  v;\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  n = parseFloat(\cf7 \strokec7 String\cf0 \strokec4 (v).replace(\cf8 \strokec8 /[^0-9.-]/\cf2 \strokec2 g\cf0 \strokec4 , \cf5 \strokec5 ""\cf0 \strokec4 ));\cb1 \
+\cb3   \cf2 \strokec2 return\cf0 \strokec4  \cf7 \strokec7 Number\cf0 \strokec4 .isFinite(n) ? n : \cf6 \strokec6 0\cf0 \strokec4 ;\cb1 \
+\cb3 \}\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 function\cf0 \strokec4  pct(count: number, total: number): number \{\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 if\cf0 \strokec4  (!total || total <= \cf6 \strokec6 0\cf0 \strokec4 ) \cf2 \strokec2 return\cf0 \strokec4  \cf6 \strokec6 0\cf0 \strokec4 ;\cb1 \
+\cb3   \cf2 \strokec2 return\cf0 \strokec4  \cf7 \strokec7 Math\cf0 \strokec4 .max(\cf6 \strokec6 0\cf0 \strokec4 , \cf7 \strokec7 Math\cf0 \strokec4 .min(\cf6 \strokec6 100\cf0 \strokec4 , (count / total) * \cf6 \strokec6 100\cf0 \strokec4 ));\cb1 \
+\cb3 \}\cb1 \
+\
+\cb3 type \cf7 \strokec7 SegmentProps\cf0 \strokec4  = \{\cb1 \
+\cb3   width: number;\cb1 \
+\cb3   count: number;\cb1 \
+\cb3   label: string;\cb1 \
+\cb3   bg: string;\cb1 \
+\cb3 \};\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 function\cf0 \strokec4  \cf7 \strokec7 Segment\cf0 \strokec4 (\{ width, count, label, bg \}: \cf7 \strokec7 SegmentProps\cf0 \strokec4 ) \{\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 return\cf0 \strokec4  (\cb1 \
+\cb3     <div\cb1 \
+\cb3       style=\{\{\cb1 \
+\cb3         width: \cf5 \strokec5 `\cf0 \strokec4 $\{width\}\cf5 \strokec5 %`\cf0 \strokec4 ,\cb1 \
+\cb3         minWidth: width > \cf6 \strokec6 0\cf0 \strokec4  ? \cf5 \strokec5 "2px"\cf0 \strokec4  : \cf5 \strokec5 "0"\cf0 \strokec4 ,\cb1 \
+\cb3         display: \cf5 \strokec5 "flex"\cf0 \strokec4 ,\cb1 \
+\cb3         flexDirection: \cf5 \strokec5 "column"\cf0 \strokec4 ,\cb1 \
+\cb3         alignItems: \cf5 \strokec5 "center"\cf0 \strokec4 ,\cb1 \
+\cb3         gap: \cf5 \strokec5 "4px"\cf0 \strokec4 ,\cb1 \
+\cb3       \}\}\cb1 \
+\cb3     >\cb1 \
+\cb3       <div\cb1 \
+\cb3         style=\{\{\cb1 \
+\cb3           fontSize: \cf5 \strokec5 "12px"\cf0 \strokec4 ,\cb1 \
+\cb3           fontWeight: \cf6 \strokec6 700\cf0 \strokec4 ,\cb1 \
+\cb3           color: \cf5 \strokec5 "#17345B"\cf0 \strokec4 ,\cb1 \
+\cb3           lineHeight: \cf6 \strokec6 1\cf0 \strokec4 ,\cb1 \
+\cb3           whiteSpace: \cf5 \strokec5 "nowrap"\cf0 \strokec4 ,\cb1 \
+\cb3           textAlign: \cf5 \strokec5 "center"\cf0 \strokec4 ,\cb1 \
+\cb3         \}\}\cb1 \
+\cb3         title=\{\cf5 \strokec5 `\cf0 \strokec4 $\{label\}\cf5 \strokec5 : \cf0 \strokec4 $\{count\}\cf5 \strokec5  responses (\cf0 \strokec4 $\{width.toFixed(\cf6 \strokec6 1\cf0 \strokec4 )\}\cf5 \strokec5 %)`\cf0 \strokec4 \}\cb1 \
+\cb3       >\cb1 \
+\cb3         \{width > \cf6 \strokec6 0\cf0 \strokec4  ? (\cb1 \
+\cb3           <>\cb1 \
+\cb3             \{\cf7 \strokec7 Math\cf0 \strokec4 .round(width)\}% (\{count\})\cb1 \
+\cb3           </>\cb1 \
+\cb3         ) : \cf2 \strokec2 null\cf0 \strokec4 \}\cb1 \
+\cb3       </div>\cb1 \
+\cb3       <div\cb1 \
+\cb3         style=\{\{\cb1 \
+\cb3           width: \cf5 \strokec5 "100%"\cf0 \strokec4 ,\cb1 \
+\cb3           height: \cf5 \strokec5 "32px"\cf0 \strokec4 ,\cb1 \
+\cb3           backgroundColor: bg,\cb1 \
+\cb3           borderRadius: \cf5 \strokec5 "4px"\cf0 \strokec4 ,\cb1 \
+\cb3           transition: \cf5 \strokec5 "width 300ms ease"\cf0 \strokec4 ,\cb1 \
+\cb3         \}\}\cb1 \
+\cb3       />\cb1 \
+\cb3     </div>\cb1 \
+\cb3   );\cb1 \
+\cb3 \}\cb1 \
+\
+\cb3 type \cf7 \strokec7 ChartRowProps\cf0 \strokec4  = \{\cb1 \
+\cb3   label: string;\cb1 \
+\cb3   total: number;\cb1 \
+\cb3   sa: number;\cb1 \
+\cb3   ag: number;\cb1 \
+\cb3   ne: number;\cb1 \
+\cb3   ng: number;\cb1 \
+\cb3 \};\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 function\cf0 \strokec4  \cf7 \strokec7 ChartRow\cf0 \strokec4 (\{ label, total, sa, ag, ne, ng \}: \cf7 \strokec7 ChartRowProps\cf0 \strokec4 ) \{\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 const\cf0 \strokec4  saPercent = pct(sa, total);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  agPercent = pct(ag, total);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  nePercent = pct(ne, total);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  ngPercent = pct(ng, total);\cb1 \
+\
+\cb3   \cf2 \strokec2 return\cf0 \strokec4  (\cb1 \
+\cb3     <div\cb1 \
+\cb3       className=\cf5 \strokec5 "grid items-end gap-3"\cf0 \cb1 \strokec4 \
+\cb3       style=\{\{\cb1 \
+\cb3         gridTemplateColumns: \cf5 \strokec5 "88px 1fr"\cf0 \strokec4 ,\cb1 \
+\cb3       \}\}\cb1 \
+\cb3     >\cb1 \
+\cb3       <div\cb1 \
+\cb3         style=\{\{\cb1 \
+\cb3           display: \cf5 \strokec5 "flex"\cf0 \strokec4 ,\cb1 \
+\cb3           flexDirection: \cf5 \strokec5 "column"\cf0 \strokec4 ,\cb1 \
+\cb3           gap: \cf5 \strokec5 "4px"\cf0 \strokec4 ,\cb1 \
+\cb3           alignItems: \cf5 \strokec5 "flex-end"\cf0 \strokec4 ,\cb1 \
+\cb3         \}\}\cb1 \
+\cb3       >\cb1 \
+\cb3         <div\cb1 \
+\cb3           style=\{\{\cb1 \
+\cb3             fontSize: \cf5 \strokec5 "14px"\cf0 \strokec4 ,\cb1 \
+\cb3             fontWeight: \cf6 \strokec6 700\cf0 \strokec4 ,\cb1 \
+\cb3             color: \cf5 \strokec5 "#17345B"\cf0 \strokec4 ,\cb1 \
+\cb3             textAlign: \cf5 \strokec5 "right"\cf0 \strokec4 ,\cb1 \
+\cb3             whiteSpace: \cf5 \strokec5 "nowrap"\cf0 \strokec4 ,\cb1 \
+\cb3           \}\}\cb1 \
+\cb3         >\cb1 \
+\cb3           \{label\}\cb1 \
+\cb3         </div>\cb1 \
+\cb3         <div\cb1 \
+\cb3           style=\{\{\cb1 \
+\cb3             fontSize: \cf5 \strokec5 "13px"\cf0 \strokec4 ,\cb1 \
+\cb3             fontWeight: \cf6 \strokec6 600\cf0 \strokec4 ,\cb1 \
+\cb3             color: \cf5 \strokec5 "#5E738C"\cf0 \strokec4 ,\cb1 \
+\cb3             whiteSpace: \cf5 \strokec5 "nowrap"\cf0 \strokec4 ,\cb1 \
+\cb3           \}\}\cb1 \
+\cb3         >\cb1 \
+\cb3           \{total > \cf6 \strokec6 0\cf0 \strokec4  ? \cf5 \strokec5 `n=\cf0 \strokec4 $\{total\}\cf5 \strokec5 `\cf0 \strokec4  : \cf5 \strokec5 "\'97"\cf0 \strokec4 \}\cb1 \
+\cb3         </div>\cb1 \
+\cb3       </div>\cb1 \
+\
+\cb3       <div\cb1 \
+\cb3         style=\{\{\cb1 \
+\cb3           display: \cf5 \strokec5 "flex"\cf0 \strokec4 ,\cb1 \
+\cb3           gap: \cf5 \strokec5 "8px"\cf0 \strokec4 ,\cb1 \
+\cb3           alignItems: \cf5 \strokec5 "flex-end"\cf0 \strokec4 ,\cb1 \
+\cb3         \}\}\cb1 \
+\cb3       >\cb1 \
+\cb3         \{total > \cf6 \strokec6 0\cf0 \strokec4  ? (\cb1 \
+\cb3           <>\cb1 \
+\cb3             <\cf7 \strokec7 Segment\cf0 \cb1 \strokec4 \
+\cb3               width=\{saPercent\}\cb1 \
+\cb3               count=\{sa\}\cb1 \
+\cb3               label=\cf5 \strokec5 "Strongly Agree"\cf0 \cb1 \strokec4 \
+\cb3               bg=\cf5 \strokec5 "#17345B"\cf0 \cb1 \strokec4 \
+\cb3             />\cb1 \
+\cb3             <\cf7 \strokec7 Segment\cf0 \cb1 \strokec4 \
+\cb3               width=\{agPercent\}\cb1 \
+\cb3               count=\{ag\}\cb1 \
+\cb3               label=\cf5 \strokec5 "Agree"\cf0 \cb1 \strokec4 \
+\cb3               bg=\cf5 \strokec5 "#255694"\cf0 \cb1 \strokec4 \
+\cb3             />\cb1 \
+\cb3             <\cf7 \strokec7 Segment\cf0 \cb1 \strokec4 \
+\cb3               width=\{nePercent\}\cb1 \
+\cb3               count=\{ne\}\cb1 \
+\cb3               label=\cf5 \strokec5 "Neutral"\cf0 \cb1 \strokec4 \
+\cb3               bg=\cf5 \strokec5 "#BCD631"\cf0 \cb1 \strokec4 \
+\cb3             />\cb1 \
+\cb3             <\cf7 \strokec7 Segment\cf0 \cb1 \strokec4 \
+\cb3               width=\{ngPercent\}\cb1 \
+\cb3               count=\{ng\}\cb1 \
+\cb3               label=\cf5 \strokec5 "Negative"\cf0 \cb1 \strokec4 \
+\cb3               bg=\cf5 \strokec5 "#F79520"\cf0 \cb1 \strokec4 \
+\cb3             />\cb1 \
+\cb3           </>\cb1 \
+\cb3         ) : (\cb1 \
+\cb3           <div\cb1 \
+\cb3             className=\cf5 \strokec5 "flex items-center justify-center w-full"\cf0 \cb1 \strokec4 \
+\cb3             style=\{\{\cb1 \
+\cb3               fontSize: \cf5 \strokec5 "12px"\cf0 \strokec4 ,\cb1 \
+\cb3               color: \cf5 \strokec5 "#5E738C"\cf0 \strokec4 ,\cb1 \
+\cb3               fontWeight: \cf6 \strokec6 500\cf0 \strokec4 ,\cb1 \
+\cb3               height: \cf5 \strokec5 "32px"\cf0 \strokec4 ,\cb1 \
+\cb3             \}\}\cb1 \
+\cb3           >\cb1 \
+\cb3             \cf7 \strokec7 No\cf0 \strokec4  data\cb1 \
+\cb3           </div>\cb1 \
+\cb3         )\}\cb1 \
+\cb3       </div>\cb1 \
+\cb3     </div>\cb1 \
+\cb3   );\cb1 \
+\cb3 \}\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 export\cf0 \strokec4  \cf2 \strokec2 default\cf0 \strokec4  \cf2 \strokec2 function\cf0 \strokec4  \cf7 \strokec7 Block\cf0 \strokec4 () \{\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 const\cf0 \strokec4  recordId = useCurrentRecordId();\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  \{ data, status \} = useRecord(\{\cb1 \
+\cb3     recordId,\cb1 \
+\cb3     select,\cb1 \
+\cb3   \});\cb1 \
+\
+\cb3   \cf2 \strokec2 if\cf0 \strokec4  (status === \cf5 \strokec5 "pending"\cf0 \strokec4 ) \{\cb1 \
+\cb3     \cf2 \strokec2 return\cf0 \strokec4  (\cb1 \
+\cb3       <div className=\cf5 \strokec5 "container py-4"\cf0 \strokec4 >\cb1 \
+\cb3         <div className=\cf5 \strokec5 "content text-sm text-muted-foreground"\cf0 \strokec4 >\cb1 \
+\cb3           \cf7 \strokec7 Loading\cf0 \strokec4  chart data...\cb1 \
+\cb3         </div>\cb1 \
+\cb3       </div>\cb1 \
+\cb3     );\cb1 \
+\cb3   \}\cb1 \
+\
+\cb3   \cf2 \strokec2 if\cf0 \strokec4  (status === \cf5 \strokec5 "error"\cf0 \strokec4  || !data) \{\cb1 \
+\cb3     \cf2 \strokec2 return\cf0 \strokec4  (\cb1 \
+\cb3       <div className=\cf5 \strokec5 "container py-4"\cf0 \strokec4 >\cb1 \
+\cb3         <div className=\cf5 \strokec5 "content text-sm text-destructive"\cf0 \strokec4 >\cb1 \
+\cb3           \cf7 \strokec7 Error\cf0 \strokec4  loading data\cb1 \
+\cb3         </div>\cb1 \
+\cb3       </div>\cb1 \
+\cb3     );\cb1 \
+\cb3   \}\cb1 \
+\
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  sa = parseNumber(data.fields.stronglyAgree);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  ag = parseNumber(data.fields.agree);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  ne = parseNumber(data.fields.neutral);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  ng = parseNumber(data.fields.negative);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  total = parseNumber(data.fields.total);\cb1 \
+\
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  rsa = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.regionStronglyAgree) ? data.fields.regionStronglyAgree[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.regionStronglyAgree);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  rag = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.regionAgree) ? data.fields.regionAgree[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.regionAgree);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  rne = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.regionNeutral) ? data.fields.regionNeutral[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.regionNeutral);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  rng = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.regionNegative) ? data.fields.regionNegative[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.regionNegative);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  rtotal = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.regionTotal) ? data.fields.regionTotal[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.regionTotal);\cb1 \
+\
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  nsa = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.networkStronglyAgree) ? data.fields.networkStronglyAgree[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.networkStronglyAgree);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  nag = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.networkAgree) ? data.fields.networkAgree[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.networkAgree);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  nne = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.networkNeutral) ? data.fields.networkNeutral[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.networkNeutral);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  nng = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.networkNegative) ? data.fields.networkNegative[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.networkNegative);\cb1 \
+\cb3   \cf2 \strokec2 const\cf0 \strokec4  ntotal = parseNumber(\cf7 \strokec7 Array\cf0 \strokec4 .isArray(data.fields.networkTotal) ? data.fields.networkTotal[\cf6 \strokec6 0\cf0 \strokec4 ] : data.fields.networkTotal);\cb1 \
+\
+\cb3   \cf9 \strokec9 // Debug: log the values to verify they're different\cf0 \cb1 \strokec4 \
+\cb3   console.log(\{\cb1 \
+\cb3     school: \{ sa, ag, ne, ng, total \},\cb1 \
+\cb3     region: \{ rsa, rag, rne, rng, rtotal \},\cb1 \
+\cb3     network: \{ nsa, nag, nne, nng, ntotal \},\cb1 \
+\cb3     rawFields: data.fields\cb1 \
+\cb3   \});\cb1 \
+\
+\cb3   \cf2 \strokec2 return\cf0 \strokec4  (\cb1 \
+\cb3     <div className=\cf5 \strokec5 "container py-3"\cf0 \strokec4 >\cb1 \
+\cb3       <div className=\cf5 \strokec5 "content"\cf0 \strokec4 >\cb1 \
+\cb3         <div\cb1 \
+\cb3           className=\cf5 \strokec5 "rounded-2xl border bg-card"\cf0 \cb1 \strokec4 \
+\cb3           style=\{\{\cb1 \
+\cb3             padding: \cf5 \strokec5 "16px 18px"\cf0 \strokec4 ,\cb1 \
+\cb3             borderColor: \cf5 \strokec5 "rgba(23,52,91,0.10)"\cf0 \strokec4 ,\cb1 \
+\cb3             boxShadow: \cf5 \strokec5 "0 1px 2px rgba(23,52,91,0.04)"\cf0 \strokec4 ,\cb1 \
+\cb3           \}\}\cb1 \
+\cb3         >\cb1 \
+\cb3           <div style=\{\{ display: \cf5 \strokec5 "flex"\cf0 \strokec4 , flexDirection: \cf5 \strokec5 "column"\cf0 \strokec4 , gap: \cf5 \strokec5 "16px"\cf0 \strokec4  \}\}>\cb1 \
+\cb3             <\cf7 \strokec7 ChartRow\cf0 \cb1 \strokec4 \
+\cb3               label=\cf5 \strokec5 "School"\cf0 \cb1 \strokec4 \
+\cb3               total=\{total\}\cb1 \
+\cb3               sa=\{sa\}\cb1 \
+\cb3               ag=\{ag\}\cb1 \
+\cb3               ne=\{ne\}\cb1 \
+\cb3               ng=\{ng\}\cb1 \
+\cb3             />\cb1 \
+\cb3             \{rtotal > \cf6 \strokec6 0\cf0 \strokec4  && (\cb1 \
+\cb3               <\cf7 \strokec7 ChartRow\cf0 \cb1 \strokec4 \
+\cb3                 label=\cf5 \strokec5 "Region"\cf0 \cb1 \strokec4 \
+\cb3                 total=\{rtotal\}\cb1 \
+\cb3                 sa=\{rsa\}\cb1 \
+\cb3                 ag=\{rag\}\cb1 \
+\cb3                 ne=\{rne\}\cb1 \
+\cb3                 ng=\{rng\}\cb1 \
+\cb3               />\cb1 \
+\cb3             )\}\cb1 \
+\cb3             \{ntotal > \cf6 \strokec6 0\cf0 \strokec4  && (\cb1 \
+\cb3               <\cf7 \strokec7 ChartRow\cf0 \cb1 \strokec4 \
+\cb3                 label=\cf5 \strokec5 "Network"\cf0 \cb1 \strokec4 \
+\cb3                 total=\{ntotal\}\cb1 \
+\cb3                 sa=\{nsa\}\cb1 \
+\cb3                 ag=\{nag\}\cb1 \
+\cb3                 ne=\{nne\}\cb1 \
+\cb3                 ng=\{nng\}\cb1 \
+\cb3               />\cb1 \
+\cb3             )\}\cb1 \
+\cb3           </div>\cb1 \
+\
+\cb3           <div\cb1 \
+\cb3             className=\cf5 \strokec5 "flex flex-wrap gap-4"\cf0 \cb1 \strokec4 \
+\cb3             style=\{\{\cb1 \
+\cb3               marginTop: \cf5 \strokec5 "16px"\cf0 \strokec4 ,\cb1 \
+\cb3               paddingLeft: \cf5 \strokec5 "91px"\cf0 \strokec4 ,\cb1 \
+\cb3               fontSize: \cf5 \strokec5 "12px"\cf0 \strokec4 ,\cb1 \
+\cb3               color: \cf5 \strokec5 "#17345B"\cf0 \strokec4 ,\cb1 \
+\cb3             \}\}\cb1 \
+\cb3           >\cb1 \
+\cb3             <span className=\cf5 \strokec5 "inline-flex items-center gap-2"\cf0 \strokec4 >\cb1 \
+\cb3               <span\cb1 \
+\cb3                 style=\{\{\cb1 \
+\cb3                   width: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   height: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   borderRadius: \cf5 \strokec5 "999px"\cf0 \strokec4 ,\cb1 \
+\cb3                   backgroundColor: \cf5 \strokec5 "#17345B"\cf0 \strokec4 ,\cb1 \
+\cb3                   display: \cf5 \strokec5 "inline-block"\cf0 \strokec4 ,\cb1 \
+\cb3                 \}\}\cb1 \
+\cb3               />\cb1 \
+\cb3               \cf7 \strokec7 Strongly\cf0 \strokec4  \cf7 \strokec7 Agree\cf0 \cb1 \strokec4 \
+\cb3             </span>\cb1 \
+\
+\cb3             <span className=\cf5 \strokec5 "inline-flex items-center gap-2"\cf0 \strokec4 >\cb1 \
+\cb3               <span\cb1 \
+\cb3                 style=\{\{\cb1 \
+\cb3                   width: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   height: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   borderRadius: \cf5 \strokec5 "999px"\cf0 \strokec4 ,\cb1 \
+\cb3                   backgroundColor: \cf5 \strokec5 "#255694"\cf0 \strokec4 ,\cb1 \
+\cb3                   display: \cf5 \strokec5 "inline-block"\cf0 \strokec4 ,\cb1 \
+\cb3                 \}\}\cb1 \
+\cb3               />\cb1 \
+\cb3               \cf7 \strokec7 Agree\cf0 \cb1 \strokec4 \
+\cb3             </span>\cb1 \
+\
+\cb3             <span className=\cf5 \strokec5 "inline-flex items-center gap-2"\cf0 \strokec4 >\cb1 \
+\cb3               <span\cb1 \
+\cb3                 style=\{\{\cb1 \
+\cb3                   width: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   height: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   borderRadius: \cf5 \strokec5 "999px"\cf0 \strokec4 ,\cb1 \
+\cb3                   backgroundColor: \cf5 \strokec5 "#BCD631"\cf0 \strokec4 ,\cb1 \
+\cb3                   display: \cf5 \strokec5 "inline-block"\cf0 \strokec4 ,\cb1 \
+\cb3                 \}\}\cb1 \
+\cb3               />\cb1 \
+\cb3               \cf7 \strokec7 Neutral\cf0 \cb1 \strokec4 \
+\cb3             </span>\cb1 \
+\
+\cb3             <span className=\cf5 \strokec5 "inline-flex items-center gap-2"\cf0 \strokec4 >\cb1 \
+\cb3               <span\cb1 \
+\cb3                 style=\{\{\cb1 \
+\cb3                   width: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   height: \cf5 \strokec5 "10px"\cf0 \strokec4 ,\cb1 \
+\cb3                   borderRadius: \cf5 \strokec5 "999px"\cf0 \strokec4 ,\cb1 \
+\cb3                   backgroundColor: \cf5 \strokec5 "#F79520"\cf0 \strokec4 ,\cb1 \
+\cb3                   display: \cf5 \strokec5 "inline-block"\cf0 \strokec4 ,\cb1 \
+\cb3                 \}\}\cb1 \
+\cb3               />\cb1 \
+\cb3               \cf7 \strokec7 Negative\cf0 \cb1 \strokec4 \
+\cb3             </span>\cb1 \
+\cb3           </div>\cb1 \
+\cb3         </div>\cb1 \
+\cb3       </div>\cb1 \
+\cb3     </div>\cb1 \
+\cb3   );\cb1 \
+\cb3 \}\cb1 \
+}

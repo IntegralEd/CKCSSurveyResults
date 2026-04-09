@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Brand palette — from Softr_Chart_Style_Reference */
+  --color-navy:   #17345B;  /* dark navy — Strongly Agree / primary text / headings */
+  --color-blue:   #255694;  /* medium blue — Agree */
+  --color-lime:   #BCD631;  /* lime green — Neutral */
+  --color-orange: #F79520;  /* orange — Negative */
+  --color-slate:  #5E738C;  /* muted blue-gray — secondary text, n= labels, muted UI */
+
+  /* Derived utility tokens */
+  --color-border: rgba(23, 52, 91, 0.10);
+  --color-shadow: rgba(23, 52, 91, 0.04);
+}
