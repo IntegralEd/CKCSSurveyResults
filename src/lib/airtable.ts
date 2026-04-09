@@ -173,14 +173,17 @@ export const SCHOOL_RESULT_FIELDS = {
   schoolNegativeCount: 'School_Negative_Count',
   // City comparison (multipleLookupValues — take [0])
   cityRespondents: 'City_Respondents (from Survey_City_Item_Results_Link)',
+  cityTop1Pct: 'City_Top_1_Percent (from Survey_City_Item_Results_Link)',
   cityTop2Pct: 'City_Top_2_Percent (from Survey_City_Item_Results_Link)',
   cityTop3Pct: 'City_Top_3_Percent (from Survey_City_Item_Results_Link)',
   // Region comparison (multipleLookupValues — take [0])
   regionRespondents: 'Region_Respondents',
+  regionTop1Pct: 'Region_Top1_Percent',
   regionTop2Pct: 'Region_Top2_Percent',
   regionTop3Pct: 'Region_Top3_Percent',
   // Network comparison (multipleLookupValues — take [0])
   networkRespondents: 'Network_Respondents (from Survey_Network_Item_Results_Link)',
+  networkTop1Pct: 'Network_Top_1_Percent (from Survey_Network_Item_Results_Link)',
   networkTop2Pct: 'Network_Top_2_Percent (from Survey_Network_Item_Results_Link)',
   networkTop3Pct: 'Network_Top_3_Percent (from Survey_Network_Item_Results_Link)',
 } as const;
@@ -294,12 +297,15 @@ export async function fetchSchoolItemResults(schoolTxt: string): Promise<SchoolI
       schoolNeutralCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolNeutralCount]),
       schoolNegativeCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolNegativeCount]),
       cityN: lookupNum(f[SCHOOL_RESULT_FIELDS.cityRespondents]),
+      cityTop1Pct: pctField(f[SCHOOL_RESULT_FIELDS.cityTop1Pct]),
       cityTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.cityTop2Pct]),
       cityTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.cityTop3Pct]),
       regionN: lookupNum(f[SCHOOL_RESULT_FIELDS.regionRespondents]),
+      regionTop1Pct: pctField(f[SCHOOL_RESULT_FIELDS.regionTop1Pct]),
       regionTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.regionTop2Pct]),
       regionTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.regionTop3Pct]),
       networkN: lookupNum(f[SCHOOL_RESULT_FIELDS.networkRespondents]),
+      networkTop1Pct: pctField(f[SCHOOL_RESULT_FIELDS.networkTop1Pct]),
       networkTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.networkTop2Pct]),
       networkTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.networkTop3Pct]),
     };

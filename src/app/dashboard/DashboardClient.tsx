@@ -26,27 +26,29 @@ const COMMENTS_COLUMNS = [
 ];
 
 function comparisonColumns(groups: ComparisonGroup[]) {
-  const cols: { key: string; label: string; width?: string; minWidth?: string; group?: string }[] = [
+  const cols: { key: string; label: string; width?: string; minWidth?: string; group?: string; groupStart?: boolean }[] = [
     { key: 'itemOrder', label: '#',    width: '40px',  minWidth: '40px' },
     { key: 'prompt',    label: 'Item', width: '320px', minWidth: '240px' },
-    // School — Top 1 computed from SA count; city/region/network lack SA field
-    { key: 'schoolN',       label: 'N',       width: '64px', group: 'School' },
+    { key: 'schoolN',       label: 'N',       width: '64px', group: 'School', groupStart: true },
     { key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px', group: 'School' },
     { key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px', group: 'School' },
     { key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px', group: 'School' },
   ];
   if (groups.includes('city')) {
-    cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City' });
+    cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City',   groupStart: true });
+    cols.push({ key: 'cityTop1Pct', label: 'Top 1 %', width: '80px', group: 'City' });
     cols.push({ key: 'cityTop2Pct', label: 'Top 2 %', width: '80px', group: 'City' });
     cols.push({ key: 'cityTop3Pct', label: 'Top 3 %', width: '80px', group: 'City' });
   }
   if (groups.includes('region')) {
-    cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region' });
+    cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region', groupStart: true });
+    cols.push({ key: 'regionTop1Pct', label: 'Top 1 %', width: '80px', group: 'Region' });
     cols.push({ key: 'regionTop2Pct', label: 'Top 2 %', width: '80px', group: 'Region' });
     cols.push({ key: 'regionTop3Pct', label: 'Top 3 %', width: '80px', group: 'Region' });
   }
   if (groups.includes('network')) {
-    cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network' });
+    cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network', groupStart: true });
+    cols.push({ key: 'networkTop1Pct', label: 'Top 1 %', width: '80px', group: 'Network' });
     cols.push({ key: 'networkTop2Pct', label: 'Top 2 %', width: '80px', group: 'Network' });
     cols.push({ key: 'networkTop3Pct', label: 'Top 3 %', width: '80px', group: 'Network' });
   }

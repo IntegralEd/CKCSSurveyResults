@@ -14,6 +14,8 @@ export interface TableColumn {
    * Columns without a group get rowspan=2 and appear only in the first header row.
    */
   group?: string;
+  /** When true, renders a prominent left border to divide this group from the previous. */
+  groupStart?: boolean;
 }
 
 interface Props {
@@ -144,6 +146,7 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
                         isWide ? 'whitespace-normal' : 'whitespace-nowrap',
                         isTopN ? 'bg-[#17345B]/[0.04] font-medium text-[#17345B]' : '',
                         isOrder ? 'text-center text-slate-400 text-xs' : '',
+                        col.groupStart ? 'border-l-[3px] border-l-slate-400' : '',
                       ].join(' ')}
                     >
                       {display}
@@ -211,10 +214,12 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
     );
   }
 
+  const GROUP_BORDER = 'border-l-[3px] border-l-slate-400';
+
   // Build group spans for the top header row
   type GroupSpan =
-    | { kind: 'leaf'; col: TableColumn }          // ungrouped → rowSpan 2
-    | { kind: 'group'; label: string; span: number }; // group → colSpan N
+    | { kind: 'leaf'; col: TableColumn }
+    | { kind: 'group'; label: string; span: number; groupStart: boolean };
 
   const groupSpans: GroupSpan[] = [];
   let i = 0;
@@ -226,7 +231,7 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
     } else {
       let span = 0;
       while (i + span < columns.length && columns[i + span].group === g) span++;
-      groupSpans.push({ kind: 'group', label: g, span });
+      groupSpans.push({ kind: 'group', label: g, span, groupStart: !!columns[i].groupStart });
       i += span;
     }
   }
@@ -258,7 +263,10 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
             <th
               key={`${gs.label}-${idx}`}
               colSpan={gs.span}
-              className="px-3 py-2 text-center font-semibold border-b border-slate-200 text-[#17345B] bg-slate-50"
+              className={[
+                'px-3 py-2 text-center font-semibold border-b border-slate-200 text-[#17345B] bg-slate-50',
+                gs.groupStart ? GROUP_BORDER : '',
+              ].join(' ')}
             >
               {gs.label}
             </th>
@@ -272,7 +280,7 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
             key={col.key}
             onClick={() => onHeaderClick(col.key)}
             style={thStyle(col)}
-            className={thClass(sortKey === col.key)}
+            className={[thClass(sortKey === col.key), col.groupStart ? GROUP_BORDER : ''].join(' ')}
           >
             <span className="inline-flex items-center gap-1">
               {col.label}

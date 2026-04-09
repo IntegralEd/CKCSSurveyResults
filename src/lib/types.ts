@@ -249,14 +249,17 @@ export interface SchoolItemResult {
   schoolNegativeCount: number;
   // City comparison
   cityN: number;
+  cityTop1Pct: number;
   cityTop2Pct: number;
   cityTop3Pct: number;
   // Region comparison
   regionN: number;
+  regionTop1Pct: number;
   regionTop2Pct: number;
   regionTop3Pct: number;
   // Network comparison
   networkN: number;
+  networkTop1Pct: number;
   networkTop2Pct: number;
   networkTop3Pct: number;
 }
@@ -277,12 +280,15 @@ export interface ComparisonRow {
   schoolTop3Pct: number;
   // Optional comparison groups — null when that group was not requested
   cityN: number | null;
+  cityTop1Pct: number | null;
   cityTop2Pct: number | null;
   cityTop3Pct: number | null;
   regionN: number | null;
+  regionTop1Pct: number | null;
   regionTop2Pct: number | null;
   regionTop3Pct: number | null;
   networkN: number | null;
+  networkTop1Pct: number | null;
   networkTop2Pct: number | null;
   networkTop3Pct: number | null;
 }
