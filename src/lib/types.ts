@@ -288,9 +288,25 @@ export interface ComparisonRow {
 
 export type ComparisonGroup = 'city' | 'region' | 'network';
 
+/**
+ * One row in History mode — side-by-side top-2% for two administrations.
+ */
+export interface HistoryRow {
+  itemOrder: number;
+  questionLabel: string;
+  prompt: string;
+  domain: string;
+  aN: number;
+  aTop2Pct: number;
+  bN: number | null;
+  bTop2Pct: number | null;
+  /** bTop2Pct − aTop2Pct, null if bTop2Pct is null */
+  delta: number | null;
+}
+
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
-export type ResultMode = 'agreement' | 'topn' | 'comments' | 'comparison';
+export type ResultMode = 'agreement' | 'topn' | 'comments' | 'comparison' | 'history';
 
 // ─── API request/response shapes ─────────────────────────────────────────────
 

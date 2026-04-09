@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { filterRespondents } from '@/lib/filters';
-import { getItemMap } from '@/lib/items';
+import { getItemMapById } from '@/lib/items';
 import { getComments } from '@/lib/comments';
 import type { CommentsRequestBody } from '@/lib/types';
 
@@ -31,12 +31,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const [respondents, itemMap] = await Promise.all([
+    const [respondents, itemMapById] = await Promise.all([
       filterRespondents(filters),
-      getItemMap(),
+      getItemMapById(),
     ]);
 
-    const comments = await getComments(respondents, itemMap);
+    const comments = await getComments(respondents, itemMapById);
     return NextResponse.json(comments);
   } catch (err) {
     console.error('[POST /api/comments]', err);

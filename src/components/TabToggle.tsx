@@ -6,18 +6,22 @@ interface Props {
   mode: ResultMode;
   onChange: (mode: ResultMode) => void;
   showComparison?: boolean;
+  showHistory?: boolean;
 }
 
 const BASE_TABS: { mode: ResultMode; label: string }[] = [
   { mode: 'comments', label: 'Open Responses' },
 ];
 
-const COMPARISON_TAB: { mode: ResultMode; label: string } = {
-  mode: 'comparison', label: 'Comparison',
-};
+const COMPARISON_TAB: { mode: ResultMode; label: string } = { mode: 'comparison', label: 'Comparison' };
+const HISTORY_TAB:    { mode: ResultMode; label: string } = { mode: 'history',    label: 'History' };
 
-export default function TabToggle({ mode, onChange, showComparison = false }: Props) {
-  const tabs = showComparison ? [COMPARISON_TAB, ...BASE_TABS] : BASE_TABS;
+export default function TabToggle({ mode, onChange, showComparison = false, showHistory = false }: Props) {
+  const tabs = [
+    ...(showComparison ? [COMPARISON_TAB] : []),
+    ...(showHistory    ? [HISTORY_TAB]    : []),
+    ...BASE_TABS,
+  ];
 
   return (
     <div

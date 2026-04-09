@@ -11,6 +11,7 @@ import type {
   ResultMode,
   CommentRow,
   ComparisonRow,
+  HistoryRow,
   ComparisonGroup,
   SchoolInfo,
 } from '@/lib/types';
@@ -61,10 +62,22 @@ const ALL_COMPARISON_GROUPS: { value: ComparisonGroup; label: string }[] = [
   { value: 'network', label: 'Network' },
 ];
 
+function historyColumns(adminA: string, adminB: string) {
+  return [
+    { key: 'itemOrder',  label: '#',                   width: '40px',  minWidth: '40px' },
+    { key: 'prompt',     label: 'Item',                width: '320px', minWidth: '240px' },
+    { key: 'aN',         label: 'N',                   width: '70px' },
+    { key: 'aTop2Pct',   label: `${adminA} Top 2 %`,   width: '130px' },
+    { key: 'bTop2Pct',   label: `${adminB} Top 2 %`,   width: '130px' },
+    { key: 'delta',      label: 'Change',              width: '80px' },
+    { key: 'domain',     label: 'Domain',              width: '120px' },
+  ];
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase = 'form' | 'results';
-type AnyRow = CommentRow | ComparisonRow;
+type AnyRow = CommentRow | ComparisonRow | HistoryRow;
 
 interface Props {
   filterOptions: FilterOptions;
@@ -75,6 +88,8 @@ interface Props {
 
 export default function DashboardClient({ filterOptions, schools }: Props) {
   // ── Form state ──────────────────────────────────────────────────────────────
+  const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [compareAdmin, setCompareAdmin] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<SchoolInfo | null>(null);
   const [comparisonGroups, setComparisonGroups] = useState<ComparisonGroup[]>([]);
   const [formFilters, setFormFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
@@ -85,12 +100,16 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   const [rows, setRows] = useState<AnyRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Capture admin labels at load time so tab labels don't change mid-session
+  const [loadedAdminA, setLoadedAdminA] = useState('');
+  const [loadedAdminB, setLoadedAdminB] = useState('');
   // ── Secondary filters (applied after initial load) ──────────────────────────
   const [secondaryFilters, setSecondaryFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const schoolSelected = selectedSchool !== null;
-  const canLoad = schoolSelected || formFilters.administration.length > 0;
+  const canLoad = selectedAdmin.length > 0;
+  const otherAdmins = filterOptions.administration.filter((a) => a !== selectedAdmin);
 
   // Comparison groups unlock progressively based on school's city/region
   function groupEnabled(group: ComparisonGroup): boolean {
@@ -127,7 +146,12 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
   // ── Fetch helpers ────────────────────────────────────────────────────────────
 
-  async function fetchResults(targetMode: ResultMode, secondary: ActiveFilters) {
+  async function fetchResults(
+    targetMode: ResultMode,
+    secondary: ActiveFilters,
+    adminA: string,
+    adminB: string,
+  ) {
     setLoading(true);
     setError(null);
 
@@ -148,9 +172,26 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         }
         setRows(await res.json());
 
+      } else if (targetMode === 'history') {
+        const res = await fetch('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            adminA,
+            adminB,
+            domain: formFilters.domain,
+            school: selectedSchool ? [selectedSchool.name] : [],
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail?.message ?? body.error ?? `HTTP ${res.status}`);
+        }
+        setRows(await res.json());
+
       } else {
         // comments
-        const base = mergeFilters(formFilters, secondary);
+        const base = mergeFilters({ ...formFilters, administration: [adminA] }, secondary);
         const filters = selectedSchool
           ? { ...base, school: [selectedSchool.name] }
           : base;
@@ -177,21 +218,25 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
   async function handleLoad() {
     const initialMode: ResultMode =
-      schoolSelected && comparisonGroups.length > 0 ? 'comparison' : 'comments';
+      schoolSelected && comparisonGroups.length > 0 ? 'comparison' :
+      compareAdmin ? 'history' :
+      'comments';
     setMode(initialMode);
+    setLoadedAdminA(selectedAdmin);
+    setLoadedAdminB(compareAdmin);
     setSecondaryFilters(EMPTY_FILTERS);
     setPhase('results');
-    await fetchResults(initialMode, EMPTY_FILTERS);
+    await fetchResults(initialMode, EMPTY_FILTERS, selectedAdmin, compareAdmin);
   }
 
   async function handleModeChange(newMode: ResultMode) {
     setMode(newMode);
-    await fetchResults(newMode, secondaryFilters);
+    await fetchResults(newMode, secondaryFilters, loadedAdminA, loadedAdminB);
   }
 
   async function handleSecondaryFilterChange(updated: ActiveFilters) {
     setSecondaryFilters(updated);
-    await fetchResults(mode, updated);
+    await fetchResults(mode, updated, loadedAdminA, loadedAdminB);
   }
 
   function handleReset() {
@@ -199,12 +244,16 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     setRows(null);
     setError(null);
     setSecondaryFilters(EMPTY_FILTERS);
+    setLoadedAdminA('');
+    setLoadedAdminB('');
   }
 
   // ── Columns ──────────────────────────────────────────────────────────────────
 
   const columns =
-    mode === 'comparison' ? comparisonColumns(comparisonGroups) : COMMENTS_COLUMNS;
+    mode === 'comparison' ? comparisonColumns(comparisonGroups) :
+    mode === 'history'    ? historyColumns(loadedAdminA, loadedAdminB) :
+    COMMENTS_COLUMNS;
 
   const rowsAsRecords = (rows ?? []) as unknown as Record<string, unknown>[];
 
@@ -213,17 +262,56 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   if (phase === 'form') {
     return (
       <div className="max-w-2xl space-y-6">
-        {/* School selector */}
+
+        {/* ── 1. Administration (required) ── */}
         <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5 space-y-4">
           <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide">
-            Select a School
+            Administration <span className="font-normal text-red-500 normal-case">*</span>
+          </h2>
+          <select
+            value={selectedAdmin}
+            onChange={(e) => {
+              setSelectedAdmin(e.target.value);
+              // Reset compare admin if it's now the same
+              if (compareAdmin === e.target.value) setCompareAdmin('');
+            }}
+            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#17345B]"
+          >
+            <option value="">— Select an administration —</option>
+            {filterOptions.administration.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+
+          {/* Compare to prior administration (conditional) */}
+          {selectedAdmin && otherAdmins.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[#5E738C] mb-2">Compare to prior administration</p>
+              <select
+                value={compareAdmin}
+                onChange={(e) => setCompareAdmin(e.target.value)}
+                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#17345B]"
+              >
+                <option value="">— None —</option>
+                {otherAdmins.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* ── 2. School + comparison groups ── */}
+        <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide">
+            School <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
           </h2>
           <select
             value={selectedSchool?.name ?? ''}
             onChange={(e) => handleSchoolChange(e.target.value)}
             className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#17345B]"
           >
-            <option value="">— All schools (no comparison) —</option>
+            <option value="">— All schools —</option>
             {schools.map((s) => (
               <option key={s.id} value={s.name}>
                 {s.name}{s.city ? ` · ${s.city}` : ''}
@@ -231,7 +319,6 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             ))}
           </select>
 
-          {/* Comparison group checkboxes */}
           <div>
             <p className="text-xs font-medium text-[#5E738C] mb-2">
               Compare to{!schoolSelected && <span className="ml-1 text-slate-400">(select a school to unlock)</span>}
@@ -261,28 +348,20 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           </div>
         </div>
 
-        {/* Administration + Domain filters */}
-        <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide">
-            Filters <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
+        {/* ── 3. Domain filter ── */}
+        <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5">
+          <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide mb-3">
+            Domain <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
           </h2>
-          <div className="flex flex-wrap gap-3">
-            <MultiSelect
-              label="Administration"
-              options={filterOptions.administration}
-              selected={formFilters.administration}
-              onChange={(v) => setFormFilters((f) => ({ ...f, administration: v }))}
-            />
-            <MultiSelect
-              label="Domain"
-              options={filterOptions.domain}
-              selected={formFilters.domain}
-              onChange={(v) => setFormFilters((f) => ({ ...f, domain: v }))}
-            />
-          </div>
+          <MultiSelect
+            label="Domain"
+            options={filterOptions.domain}
+            selected={formFilters.domain}
+            onChange={(v) => setFormFilters((f) => ({ ...f, domain: v }))}
+          />
         </div>
 
-        {/* Load button */}
+        {/* ── Load button ── */}
         <button
           type="button"
           onClick={handleLoad}
@@ -296,9 +375,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           Load Results
         </button>
         {!canLoad && (
-          <p className="text-xs text-slate-400">
-            Select a school or an administration to load results.
-          </p>
+          <p className="text-xs text-slate-400">Select an administration to continue.</p>
         )}
       </div>
     );
@@ -315,14 +392,19 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             {selectedSchool.name}
           </span>
         )}
+        {loadedAdminA && (
+          <span className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-xs font-medium">
+            {loadedAdminA}
+          </span>
+        )}
+        {loadedAdminB && (
+          <span className="bg-slate-100 text-slate-500 rounded-full px-3 py-1 text-xs">
+            vs {loadedAdminB}
+          </span>
+        )}
         {comparisonGroups.map((g) => (
           <span key={g} className="bg-[#255694] text-white rounded-full px-3 py-1 text-xs">
             vs {g.charAt(0).toUpperCase() + g.slice(1)}
-          </span>
-        ))}
-        {formFilters.administration.map((a) => (
-          <span key={a} className="bg-slate-100 text-slate-600 rounded-full px-3 py-1 text-xs">
-            {a}
           </span>
         ))}
         <button
@@ -340,6 +422,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           mode={mode}
           onChange={handleModeChange}
           showComparison={schoolSelected && comparisonGroups.length > 0}
+          showHistory={Boolean(loadedAdminB)}
         />
         <div className="ml-auto">
           <DownloadButton
@@ -351,8 +434,8 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         </div>
       </div>
 
-      {/* Secondary filters (demographic slicers — post-load) */}
-      {mode !== 'comparison' && (
+      {/* Secondary filters (demographic slicers — post-load, comments only) */}
+      {mode === 'comments' && (
         <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-3">
           <p className="text-xs text-[#5E738C] mb-2 font-medium">Refine by demographic</p>
           <div className="flex items-center flex-wrap gap-2">
@@ -405,7 +488,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         <ResultsTable
           columns={columns}
           rows={rowsAsRecords}
-          defaultSortKey={mode === 'comparison' ? 'itemOrder' : undefined}
+          defaultSortKey={mode === 'comparison' || mode === 'history' ? 'itemOrder' : undefined}
         />
       )}
     </div>

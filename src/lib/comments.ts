@@ -54,10 +54,8 @@ export async function getComments(
     new Set(respondents.map((r) => r.administration).filter(Boolean))
   );
 
-  // Build a school set and respondent key set for optional secondary filtering.
-  // TODO: Use respondentKeySet to post-filter comments by Respondent_Link once
-  //   the Respondent_Link → Respondent_Key join is verified.
-  const schoolSet = new Set(respondents.map((r) => r.school).filter(Boolean));
+  // Build a respondent key set for precise post-filtering.
+  // comment.respondentLink (text key) must match respondent.respondentKey.
   const respondentKeySet = new Set(
     respondents.map((r) => r.respondentKey).filter(Boolean)
   );
@@ -67,6 +65,12 @@ export async function getComments(
   const rows: CommentRow[] = [];
 
   for (const comment of rawComments) {
+    // Post-filter: only include comments whose respondent is in the filtered set.
+    // This enforces school, demographic, and all other active filters.
+    if (comment.respondentLink && !respondentKeySet.has(comment.respondentLink)) {
+      continue;
+    }
+
     // Look up the linked Survey_Item by Airtable record ID.
     const linkedId = comment.linkedItemRecordId ?? '';
     const item = linkedId ? itemMapById.get(linkedId) : undefined;
@@ -84,18 +88,18 @@ export async function getComments(
     });
   }
 
-  // Sort by item order, then by questionLabel for stability.
+  // Build a secondary map by questionLabel for sort order lookup.
+  const orderByLabel = new Map<string, number>();
+  Array.from(itemMapById.values()).forEach((item) => {
+    orderByLabel.set(item.questionLabel, item.itemOrder);
+  });
+
   rows.sort((a, b) => {
-    const aOrder = itemMapById.get(a.questionLabel)?.itemOrder ?? 9999;
-    const bOrder = itemMapById.get(b.questionLabel)?.itemOrder ?? 9999;
+    const aOrder = orderByLabel.get(a.questionLabel) ?? 9999;
+    const bOrder = orderByLabel.get(b.questionLabel) ?? 9999;
     if (aOrder !== bOrder) return aOrder - bOrder;
     return a.questionLabel.localeCompare(b.questionLabel);
   });
-
-  // Suppress unused variable warnings — these will be used once the
-  // more precise filter strategies are implemented.
-  void schoolSet;
-  void respondentKeySet;
 
   return rows;
 }
