@@ -6,8 +6,8 @@
  *
  * Real Airtable field names confirmed from schema registry.
  */
-import { fetchRespondents, fetchItems, SLICER_FIELDS } from './airtable';
-import type { FilterOptions, ActiveFilters, SurveyRespondent } from './types';
+import { fetchRespondents, fetchItems, fetchSchools, SLICER_FIELDS } from './airtable';
+import type { FilterOptions, ActiveFilters, SurveyRespondent, SchoolInfo } from './types';
 
 /**
  * The slicer fields we request when only building the filter option lists.
@@ -32,6 +32,15 @@ const SLICER_FIELD_NAMES = [
  *     We flatten all values into a single unique set.
  *   - Gender_Select (multipleSelects): same treatment.
  */
+/**
+ * Fetch all schools with their city/region context.
+ * Used by the UI to resolve which comparison groups are available
+ * once a school is selected.
+ */
+export async function getSchoolOptions(): Promise<SchoolInfo[]> {
+  return fetchSchools();
+}
+
 export async function getFilterOptions(): Promise<FilterOptions> {
   const [respondents, items] = await Promise.all([
     fetchRespondents([...SLICER_FIELD_NAMES]),

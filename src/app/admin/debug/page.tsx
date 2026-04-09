@@ -13,19 +13,23 @@
  * NOTE: This page is intentionally unprotected for development.
  *   Remove or gate it before sharing the URL publicly.
  */
-import { getFilterOptions, filterRespondents } from '@/lib/filters';
-import { getSurveyItems } from '@/lib/items';
-import { aggregateAgreement } from '@/lib/aggregation';
+import { getFilterOptions, filterRespondents, getSchoolOptions } from '@/lib/filters';
+import { getSurveyItems, getItemMapById } from '@/lib/items';
+import { aggregateAgreement, buildComparisonRows } from '@/lib/aggregation';
 import {
   fetchItems,
   fetchRespondents,
   fetchComments,
+  fetchSchoolItemResults,
   SLICER_FIELDS,
   ITEM_FIELDS,
   COMMENT_FIELDS,
+  SCHOOL_RESULT_FIELDS,
   TABLE_RESPONDENTS,
   TABLE_ITEMS,
   TABLE_COMMENTS,
+  TABLE_SCHOOL_ITEM_RESULTS,
+  TABLE_SCHOOLS,
 } from '@/lib/airtable';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +49,9 @@ export default async function DebugPage() {
 
   let agreementProbe: { rowCount: number; firstRow: unknown } | null = null;
   let agreementError: string | null = null;
+
+  let comparisonProbe: { schoolCount: number; firstSchool: unknown; rowCount: number; firstRow: unknown } | null = null;
+  let comparisonError: string | null = null;
 
   try {
     filterOptions = await getFilterOptions();
@@ -89,10 +96,6 @@ export default async function DebugPage() {
     agreementError = e instanceof Error ? e.message : String(e);
   }
 
-  return (
-    <div className="space-y-10 max-w-4xl p-6">
-      <h1 className="text-xl font-semibold text-[#17345B]">Airtable Debug</h1>
-
       {/* ── Table IDs ─────────────────────────────────────────────────── */}
       <section>
         <h2 className="text-base font-semibold text-[#17345B] mb-1">
@@ -104,6 +107,8 @@ export default async function DebugPage() {
               Survey_Respondents: TABLE_RESPONDENTS,
               Survey_Items: TABLE_ITEMS,
               Survey_Item_Comments: TABLE_COMMENTS,
+              Survey_School_Item_Results: TABLE_SCHOOL_ITEM_RESULTS,
+              Schools: TABLE_SCHOOLS,
             },
             null,
             2
@@ -209,6 +214,49 @@ export default async function DebugPage() {
         ) : (
           <pre className="bg-slate-50 border border-slate-200 rounded p-4 text-xs overflow-auto">
             {JSON.stringify(sampleComments, null, 2)}
+          </pre>
+        )}
+      </section>
+
+  try {
+    const schools = await getSchoolOptions();
+    const firstSchool = schools[0];
+    if (firstSchool) {
+      const itemMapById = await getItemMapById();
+      const rawResults = await fetchSchoolItemResults(firstSchool.name);
+      const rows = buildComparisonRows(rawResults, ['city', 'region', 'network'], itemMapById);
+      comparisonProbe = {
+        schoolCount: schools.length,
+        firstSchool: { name: firstSchool.name, city: firstSchool.city, region: firstSchool.region },
+        rowCount: rows.length,
+        firstRow: rows[0] ?? null,
+      };
+    } else {
+      comparisonError = 'No schools returned from Schools table';
+    }
+  } catch (e) {
+    comparisonError = e instanceof Error ? e.message : String(e);
+  }
+
+  return (
+    <div className="space-y-10 max-w-4xl p-6">
+      <h1 className="text-xl font-semibold text-[#17345B]">Airtable Debug</h1>
+
+      {/* ── Section 6: Comparison probe ───────────────────────────────── */}
+      <section>
+        <h2 className="text-base font-semibold text-[#17345B] mb-1">
+          6. Comparison Probe — first school, all comparison groups
+        </h2>
+        <p className="text-xs text-[#5E738C] mb-2">
+          SCHOOL_RESULT_FIELDS (key subset): schoolTxt, itemOrder, percentTop2, cityTop2Pct, regionTop2Pct, networkTop2Pct
+        </p>
+        {comparisonError ? (
+          <pre className="bg-red-50 border border-red-200 text-red-700 rounded p-4 text-xs overflow-auto">
+            {comparisonError}
+          </pre>
+        ) : (
+          <pre className="bg-slate-50 border border-slate-200 rounded p-4 text-xs overflow-auto">
+            {JSON.stringify(comparisonProbe, null, 2)}
           </pre>
         )}
       </section>

@@ -1,29 +1,32 @@
 /**
  * GET /api/filters
  *
- * Returns FilterOptions: the unique values for each slicer field
- * (Administration, School, Region, Race, Gender, Grade, Domain).
- *
- * Response is cached for 5 minutes at the edge/server level.
+ * Returns:
+ *   filterOptions — unique values per slicer field (admin, school, region, race, gender, grade, domain)
+ *   schools       — SchoolInfo[] with name, fullName, city, region for the school selector
+ *                   and comparison group dependency resolution
  */
 import { NextResponse } from 'next/server';
-import { getFilterOptions } from '@/lib/filters';
+import { getFilterOptions, getSchoolOptions } from '@/lib/filters';
 
-export const dynamic = 'force-dynamic'; // disable static generation; data is live
+export const dynamic = 'force-dynamic';
 
 export async function GET(): Promise<NextResponse> {
   try {
-    const filterOptions = await getFilterOptions();
-    return NextResponse.json(filterOptions, {
+    const [filterOptions, schools] = await Promise.all([
+      getFilterOptions(),
+      getSchoolOptions(),
+    ]);
+    return NextResponse.json({ filterOptions, schools }, {
       headers: {
-        // Cache for 5 minutes; stale-while-revalidate for 60 s
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
       },
     });
   } catch (err) {
-    console.error('[GET /api/filters]', err);
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[GET /api/filters]', detail);
     return NextResponse.json(
-      { error: 'Failed to fetch filter options', detail: String(err) },
+      { error: 'Failed to fetch filter options', detail },
       { status: 500 }
     );
   }
