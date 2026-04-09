@@ -19,7 +19,7 @@ import type { ComparisonGroup } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 interface ComparisonRequestBody {
-  schoolRecordId: string;  // Airtable record ID — Schools.School_AT_ID = RECORD_ID()
+  schoolTxt: string;  // School_Txt value from Survey_School_Item_Results (= SchoolInfo.name)
   comparisonGroups: ComparisonGroup[];
   domain?: string[];
 }
@@ -33,11 +33,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { schoolRecordId, comparisonGroups, domain = [] } = body;
+  const { schoolTxt, comparisonGroups, domain = [] } = body;
 
-  if (!schoolRecordId) {
+  if (!schoolTxt) {
     return NextResponse.json(
-      { error: 'Request body must include `schoolRecordId`' },
+      { error: 'Request body must include `schoolTxt`' },
       { status: 400 }
     );
   }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const [rawResults, itemMapById] = await Promise.all([
-      fetchSchoolItemResults(schoolRecordId),
+      fetchSchoolItemResults(schoolTxt),
       getItemMapById(),
     ]);
 

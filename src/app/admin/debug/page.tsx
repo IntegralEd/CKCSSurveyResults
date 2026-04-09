@@ -238,7 +238,7 @@ export default async function DebugPage() {
     const firstSchool = schools[0];
     if (firstSchool) {
       const itemMapById = await getItemMapById();
-      const rawResults = await fetchSchoolItemResults(firstSchool.id);
+      const rawResults = await fetchSchoolItemResults(firstSchool.name);
       const rows = buildComparisonRows(rawResults, ['city', 'region', 'network'], itemMapById);
       comparisonProbe = {
         schoolCount: schools.length,

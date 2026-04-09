@@ -251,15 +251,19 @@ function lookupStr(val: unknown): string {
 /**
  * Fetch Survey_School_Item_Results records for a given school.
  *
- * Filters by the Schools linked record field using the school's Airtable record ID
- * (Schools.School_AT_ID = RECORD_ID(), so school.id IS the match key).
- * This is more robust than matching on School_Txt which may differ from School_Name.
+ * Filters by School_Txt (singleLineText) using the exact value from the results
+ * table itself — same value we expose as SchoolInfo.name via fetchSchools().
  *
- * @param schoolRecordId  Airtable record ID of the school (SchoolInfo.id)
+ * Note: filterByFormula resolves multipleRecordLinks fields to their display
+ * names (primary field), not record IDs — so record-ID-based joins do not
+ * work in filterByFormula context. School_Txt is the reliable match key.
+ *
+ * @param schoolTxt  School_Txt value from Survey_School_Item_Results (= SchoolInfo.name)
  */
-export async function fetchSchoolItemResults(schoolRecordId: string): Promise<SchoolItemResult[]> {
+export async function fetchSchoolItemResults(schoolTxt: string): Promise<SchoolItemResult[]> {
+  const escaped = schoolTxt.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const records = await fetchAllRecords(TABLE_SCHOOL_ITEM_RESULTS, {
-    filterByFormula: `FIND("${schoolRecordId}", ARRAYJOIN({Schools})) > 0`,
+    filterByFormula: `{School_Txt} = "${escaped}"`,
     fields: Object.values(SCHOOL_RESULT_FIELDS),
     sort: [{ field: SCHOOL_RESULT_FIELDS.itemOrder, direction: 'asc' }],
   });
