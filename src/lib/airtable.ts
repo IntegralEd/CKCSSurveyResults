@@ -233,6 +233,15 @@ function lookupNum(val: unknown): number {
   return typeof val === 'number' ? val : parseFloat(String(val ?? '0')) || 0;
 }
 
+/**
+ * Airtable stores top-N percentages as decimals (0–1), e.g. 0.67 = 67%.
+ * Multiply by 100 and round to 1 decimal for display consistency with
+ * the agreement aggregation which produces 0–100 values.
+ */
+function pctField(val: unknown): number {
+  return Math.round(lookupNum(val) * 1000) / 10; // ×100, rounded to 1 decimal
+}
+
 /** Helper: safely extract [0] from a multipleLookupValues array as a string */
 function lookupStr(val: unknown): string {
   if (Array.isArray(val)) return String(val[0] ?? '');
@@ -274,21 +283,21 @@ export async function fetchSchoolItemResults(schoolRecordId: string): Promise<Sc
         : parseInt(String(f[SCHOOL_RESULT_FIELDS.itemOrder] ?? '0'), 10) || 0,
       surveyItemRecordId,
       schoolN: lookupNum(f[SCHOOL_RESULT_FIELDS.respondents]),
-      schoolTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.percentTop2]),
-      schoolTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.percentTop3]),
+      schoolTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.percentTop2]),
+      schoolTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.percentTop3]),
       schoolSACount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolSACount]),
       schoolAgreeCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolAgreeCount]),
       schoolNeutralCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolNeutralCount]),
       schoolNegativeCount: lookupNum(f[SCHOOL_RESULT_FIELDS.schoolNegativeCount]),
       cityN: lookupNum(f[SCHOOL_RESULT_FIELDS.cityRespondents]),
-      cityTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.cityTop2Pct]),
-      cityTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.cityTop3Pct]),
+      cityTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.cityTop2Pct]),
+      cityTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.cityTop3Pct]),
       regionN: lookupNum(f[SCHOOL_RESULT_FIELDS.regionRespondents]),
-      regionTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.regionTop2Pct]),
-      regionTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.regionTop3Pct]),
+      regionTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.regionTop2Pct]),
+      regionTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.regionTop3Pct]),
       networkN: lookupNum(f[SCHOOL_RESULT_FIELDS.networkRespondents]),
-      networkTop2Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.networkTop2Pct]),
-      networkTop3Pct: lookupNum(f[SCHOOL_RESULT_FIELDS.networkTop3Pct]),
+      networkTop2Pct: pctField(f[SCHOOL_RESULT_FIELDS.networkTop2Pct]),
+      networkTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.networkTop3Pct]),
     };
   });
 }
