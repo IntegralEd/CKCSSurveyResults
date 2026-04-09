@@ -21,6 +21,7 @@ import {
   fetchRespondents,
   fetchComments,
   fetchSchoolItemResults,
+  fetchAllRecords,
   SLICER_FIELDS,
   ITEM_FIELDS,
   COMMENT_FIELDS,
@@ -52,6 +53,9 @@ export default async function DebugPage() {
 
   let comparisonProbe: { schoolCount: number; firstSchool: unknown; rowCount: number; firstRow: unknown } | null = null;
   let comparisonError: string | null = null;
+
+  let schoolResultsSample: unknown[] = [];
+  let schoolResultsSampleError: string | null = null;
 
   try {
     filterOptions = await getFilterOptions();
@@ -218,6 +222,17 @@ export default async function DebugPage() {
         )}
       </section>
 
+  // Raw sample from Survey_School_Item_Results — no filter — to confirm School_Txt values
+  try {
+    const raw = await fetchAllRecords(TABLE_SCHOOL_ITEM_RESULTS, {
+      fields: ['School_Txt', 'School_Item_Result_Key', 'Item_Order', 'Percent_Top_2'],
+      maxRecords: 5,
+    });
+    schoolResultsSample = raw.map((r) => r.fields);
+  } catch (e) {
+    schoolResultsSampleError = e instanceof Error ? e.message : String(e);
+  }
+
   try {
     const schools = await getSchoolOptions();
     const firstSchool = schools[0];
@@ -241,6 +256,25 @@ export default async function DebugPage() {
   return (
     <div className="space-y-10 max-w-4xl p-6">
       <h1 className="text-xl font-semibold text-[#17345B]">Airtable Debug</h1>
+
+      {/* ── Section 6a: Raw School_Txt sample ─────────────────────────── */}
+      <section>
+        <h2 className="text-base font-semibold text-[#17345B] mb-1">
+          6a. Survey_School_Item_Results — raw School_Txt sample (first 5, no filter)
+        </h2>
+        <p className="text-xs text-[#5E738C] mb-2">
+          Used to verify School_Txt values match Schools.School_Name for the filter join.
+        </p>
+        {schoolResultsSampleError ? (
+          <pre className="bg-red-50 border border-red-200 text-red-700 rounded p-4 text-xs overflow-auto">
+            {schoolResultsSampleError}
+          </pre>
+        ) : (
+          <pre className="bg-slate-50 border border-slate-200 rounded p-4 text-xs overflow-auto">
+            {JSON.stringify(schoolResultsSample, null, 2)}
+          </pre>
+        )}
+      </section>
 
       {/* ── Section 6: Comparison probe ───────────────────────────────── */}
       <section>
