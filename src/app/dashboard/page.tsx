@@ -1,24 +1,25 @@
 /**
  * /dashboard — Server Component shell.
  *
- * Fetches filter options server-side so the initial page render already has
- * all dropdown data. The heavy client-side work (filtering, fetching results)
- * lives in DashboardClient.
+ * Fetches filter options and school list server-side so the initial page
+ * render already has all selector data. Heavy client work lives in DashboardClient.
  */
 import { Suspense } from 'react';
-import { getFilterOptions } from '@/lib/filters';
+import { getFilterOptions, getSchoolOptions } from '@/lib/filters';
 import DashboardClient from './DashboardClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  // Fetch filter options on the server; errors here surface as a 500.
-  const filterOptions = await getFilterOptions();
+  const [filterOptions, schools] = await Promise.all([
+    getFilterOptions(),
+    getSchoolOptions(),
+  ]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-800">
+        <h1 className="text-xl font-semibold text-[#17345B]">
           Survey Results Dashboard
         </h1>
       </div>
@@ -30,7 +31,7 @@ export default async function DashboardPage() {
           </div>
         }
       >
-        <DashboardClient filterOptions={filterOptions} />
+        <DashboardClient filterOptions={filterOptions} schools={schools} />
       </Suspense>
     </div>
   );
