@@ -224,17 +224,17 @@ function lookupStr(val: unknown): string {
 }
 
 /**
- * Fetch Survey_School_Item_Results records for a given school name.
+ * Fetch Survey_School_Item_Results records for a given school.
  *
- * Filters by School_Txt (singleLineText). Returns all item rows for that school
- * with school-level results plus pre-rolled city/region/network comparison values.
+ * Filters by the Schools linked record field using the school's Airtable record ID
+ * (Schools.School_AT_ID = RECORD_ID(), so school.id IS the match key).
+ * This is more robust than matching on School_Txt which may differ from School_Name.
  *
- * @param schoolTxt  Value of School_Txt field — matches the school selector values
+ * @param schoolRecordId  Airtable record ID of the school (SchoolInfo.id)
  */
-export async function fetchSchoolItemResults(schoolTxt: string): Promise<SchoolItemResult[]> {
-  const escaped = schoolTxt.replace(/"/g, '\\"');
+export async function fetchSchoolItemResults(schoolRecordId: string): Promise<SchoolItemResult[]> {
   const records = await fetchAllRecords(TABLE_SCHOOL_ITEM_RESULTS, {
-    filterByFormula: `{School_Txt} = "${escaped}"`,
+    filterByFormula: `FIND("${schoolRecordId}", ARRAYJOIN({Schools})) > 0`,
     fields: Object.values(SCHOOL_RESULT_FIELDS),
     sort: [{ field: SCHOOL_RESULT_FIELDS.itemOrder, direction: 'asc' }],
   });
