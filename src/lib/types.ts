@@ -316,6 +316,28 @@ export interface HistoryRow {
   bTop3Pct: number | null;
 }
 
+// ─── Softr user context (passed via URL search params from the embed) ─────────
+
+export type AccountType = 'Site_Admin' | 'Client_Admin' | 'Region_User' | 'School_User' | '';
+
+/**
+ * Decoded from query params set by the Softr embed snippet.
+ * Drives school-picker filtering and debug panel visibility.
+ *
+ * Permissions summary:
+ *   Site_Admin   — full access + debug panel visible
+ *   Client_Admin — full access to all schools/regions, no debug
+ *   Region_User  — schools filtered to assignedRegions; can compare city/region/network
+ *   School_User  — locked to assignedSchools; can compare city/region/network
+ *   ''           — no auth context (dev / direct access); full access
+ */
+export interface UserContext {
+  email: string;
+  accountType: AccountType;
+  assignedSchools: string[];   // school names from Assigned_Schools (comma-split)
+  assignedRegions: string[];   // region names from Assigned_Regions (comma-split)
+}
+
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
 export type ResultMode = 'agreement' | 'topn' | 'comments' | 'comparison' | 'charts' | 'history';

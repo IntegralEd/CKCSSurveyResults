@@ -17,9 +17,13 @@ interface Props {
   schools: SchoolInfo[];
   selected: SchoolInfo[];
   onChange: (schools: SchoolInfo[]) => void;
+  /** When true, dropdown cannot be opened — selection is locked by account permissions */
+  disabled?: boolean;
+  /** Optional note shown below the trigger when disabled */
+  lockedNote?: string;
 }
 
-export default function SchoolMultiSelect({ schools, selected, onChange }: Props) {
+export default function SchoolMultiSelect({ schools, selected, onChange, disabled = false, lockedNote }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -94,19 +98,34 @@ export default function SchoolMultiSelect({ schools, selected, onChange }: Props
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-left bg-white focus:outline-none focus:border-[#17345B] flex items-center justify-between gap-2"
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        className={[
+          'w-full border rounded-md px-3 py-2 text-sm text-left bg-white flex items-center justify-between gap-2',
+          disabled
+            ? 'border-slate-100 bg-slate-50 cursor-not-allowed opacity-80'
+            : 'border-slate-200 focus:outline-none focus:border-[#17345B]',
+        ].join(' ')}
       >
         <span className={selected.length === 0 ? 'text-slate-400' : 'text-slate-800 truncate'}>
           {selected.length === 0 ? '— No school selected —' : triggerLabel}
         </span>
+        {disabled ? (
+          <svg className="w-4 h-4 text-slate-300 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd"/>
+          </svg>
+        ) : (
         <svg
           className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 20 20" fill="currentColor"
         >
           <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
         </svg>
+        )}
       </button>
+      {disabled && lockedNote && (
+        <p className="mt-1 text-xs text-slate-400">{lockedNote}</p>
+      )}
 
       {/* Dropdown */}
       {open && (

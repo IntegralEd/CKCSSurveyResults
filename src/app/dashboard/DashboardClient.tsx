@@ -7,6 +7,7 @@ import ChartPanel from '@/components/ChartPanel';
 import DownloadButton from '@/components/DownloadButton';
 import MultiSelect from '@/components/MultiSelect';
 import SchoolMultiSelect from '@/components/SchoolMultiSelect';
+import { useEffect } from 'react';
 import type {
   FilterOptions,
   ActiveFilters,
@@ -16,6 +17,7 @@ import type {
   HistoryRow,
   ComparisonGroup,
   SchoolInfo,
+  UserContext,
 } from '@/lib/types';
 
 // ─── Column definitions ───────────────────────────────────────────────────────
@@ -156,11 +158,12 @@ type AnyRow = CommentRow | ComparisonRow | HistoryRow;
 interface Props {
   filterOptions: FilterOptions;
   schools: SchoolInfo[];
+  userContext?: UserContext;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DashboardClient({ filterOptions, schools }: Props) {
+export default function DashboardClient({ filterOptions, schools, userContext }: Props) {
   // ── Form state ──────────────────────────────────────────────────────────────
   const [selectedAdmin, setSelectedAdmin] = useState('');
   const [compareAdmin, setCompareAdmin] = useState('');
@@ -180,6 +183,42 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   const [loadedAdminB, setLoadedAdminB] = useState('');
   // ── Secondary filters (applied after initial load) ──────────────────────────
   const [secondaryFilters, setSecondaryFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
+
+  // ── Permission-derived values ────────────────────────────────────────────────
+
+  const acct = userContext?.accountType ?? '';
+
+  /**
+   * Schools visible in the picker, filtered by account type:
+   *   Site_Admin / Client_Admin / '' → all schools
+   *   Region_User → schools whose region is in assignedRegions
+   *   School_User → only their assigned school(s)
+   */
+  const visibleSchools: SchoolInfo[] = (() => {
+    if (acct === 'Region_User' && (userContext?.assignedRegions.length ?? 0) > 0) {
+      return schools.filter((s) => userContext!.assignedRegions.includes(s.region));
+    }
+    if (acct === 'School_User' && (userContext?.assignedSchools.length ?? 0) > 0) {
+      return schools.filter((s) => userContext!.assignedSchools.includes(s.name));
+    }
+    return schools;
+  })();
+
+  /** School_User cannot change their school selection */
+  const isSchoolLocked = acct === 'School_User';
+
+  /** Site_Admin sees the debug panel link */
+  const showDebug = acct === 'Site_Admin' || acct === '';
+
+  // Pre-select schools for School_User on first render
+  useEffect(() => {
+    if (acct === 'School_User' && (userContext?.assignedSchools.length ?? 0) > 0 && selectedSchools.length === 0) {
+      const preselected = schools.filter((s) => userContext!.assignedSchools.includes(s.name));
+      if (preselected.length > 0) setSelectedSchools(preselected);
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const schoolSelected = selectedSchools.length > 0;
@@ -396,9 +435,11 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           </h2>
 
             <SchoolMultiSelect
-            schools={schools}
+            schools={visibleSchools}
             selected={selectedSchools}
             onChange={handleSchoolsChange}
+            disabled={isSchoolLocked}
+            lockedNote={isSchoolLocked ? 'School access is managed by your account permissions.' : undefined}
           />
 
           <div>
