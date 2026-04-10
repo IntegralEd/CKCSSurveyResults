@@ -31,44 +31,55 @@ const COMMENTS_COLUMNS = [
   { key: 'commentText',    label: 'Response',       width: '400px', minWidth: '280px' },
 ];
 
-function comparisonColumns(groups: ComparisonGroup[], multiSchool = false) {
+/**
+ * Build comparison column definitions.
+ *
+ * multiSchool   — adds School name column, omits standalone # / Item cols when hideItemCols
+ * hideItemCols  — true in multi-school + group-by-item: item info lives in the section header
+ */
+function comparisonColumns(
+  groups: ComparisonGroup[],
+  multiSchool = false,
+  hideItemCols = false,
+) {
   const cols: { key: string; label: string; width?: string; minWidth?: string; group?: string; groupStart?: boolean }[] = [];
+
   if (multiSchool) {
     cols.push({ key: 'schoolName', label: 'School', width: '140px', minWidth: '120px' });
   }
-  cols.push(
-    { key: 'itemOrder', label: '#',    width: '40px',  minWidth: '40px' },
-    { key: 'prompt',    label: 'Item', width: '320px', minWidth: '240px' },
-  );
-  if (multiSchool) {
-    cols.push({ key: 'schoolN',       label: 'N',       width: '64px' });
-    cols.push({ key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px' });
-    cols.push({ key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px' });
-    cols.push({ key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px' });
-  } else {
-    cols.push({ key: 'schoolN',       label: 'N',       width: '64px', group: 'School', groupStart: true });
-    cols.push({ key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px', group: 'School' });
-    cols.push({ key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px', group: 'School' });
-    cols.push({ key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px', group: 'School' });
-    if (groups.includes('city')) {
-      cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City',   groupStart: true });
-      cols.push({ key: 'cityTop1Pct', label: 'Top 1 %', width: '80px', group: 'City' });
-      cols.push({ key: 'cityTop2Pct', label: 'Top 2 %', width: '80px', group: 'City' });
-      cols.push({ key: 'cityTop3Pct', label: 'Top 3 %', width: '80px', group: 'City' });
-    }
-    if (groups.includes('region')) {
-      cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region', groupStart: true });
-      cols.push({ key: 'regionTop1Pct', label: 'Top 1 %', width: '80px', group: 'Region' });
-      cols.push({ key: 'regionTop2Pct', label: 'Top 2 %', width: '80px', group: 'Region' });
-      cols.push({ key: 'regionTop3Pct', label: 'Top 3 %', width: '80px', group: 'Region' });
-    }
-    if (groups.includes('network')) {
-      cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network', groupStart: true });
-      cols.push({ key: 'networkTop1Pct', label: 'Top 1 %', width: '80px', group: 'Network' });
-      cols.push({ key: 'networkTop2Pct', label: 'Top 2 %', width: '80px', group: 'Network' });
-      cols.push({ key: 'networkTop3Pct', label: 'Top 3 %', width: '80px', group: 'Network' });
-    }
+  if (!hideItemCols) {
+    cols.push(
+      { key: 'itemOrder', label: '#',    width: '40px',  minWidth: '40px' },
+      { key: 'prompt',    label: 'Item', width: '320px', minWidth: '240px' },
+    );
   }
+
+  // School data — same structure whether single or multi
+  cols.push({ key: 'schoolN',       label: 'N',       width: '64px', group: 'School', groupStart: true });
+  cols.push({ key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px', group: 'School' });
+  cols.push({ key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px', group: 'School' });
+  cols.push({ key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px', group: 'School' });
+
+  // Comparison groups — available for both single and multi-school
+  if (groups.includes('city')) {
+    cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City',    groupStart: true });
+    cols.push({ key: 'cityTop1Pct', label: 'Top 1 %', width: '80px', group: 'City' });
+    cols.push({ key: 'cityTop2Pct', label: 'Top 2 %', width: '80px', group: 'City' });
+    cols.push({ key: 'cityTop3Pct', label: 'Top 3 %', width: '80px', group: 'City' });
+  }
+  if (groups.includes('region')) {
+    cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region', groupStart: true });
+    cols.push({ key: 'regionTop1Pct', label: 'Top 1 %', width: '80px', group: 'Region' });
+    cols.push({ key: 'regionTop2Pct', label: 'Top 2 %', width: '80px', group: 'Region' });
+    cols.push({ key: 'regionTop3Pct', label: 'Top 3 %', width: '80px', group: 'Region' });
+  }
+  if (groups.includes('network')) {
+    cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network', groupStart: true });
+    cols.push({ key: 'networkTop1Pct', label: 'Top 1 %', width: '80px', group: 'Network' });
+    cols.push({ key: 'networkTop2Pct', label: 'Top 2 %', width: '80px', group: 'Network' });
+    cols.push({ key: 'networkTop3Pct', label: 'Top 3 %', width: '80px', group: 'Network' });
+  }
+
   cols.push({ key: 'domain', label: 'Domain', width: '120px' });
   return cols;
 }
@@ -106,10 +117,35 @@ function historyColumns(adminA: string, adminB: string) {
 
 function applyGroupBy(
   rawRows: Record<string, unknown>[],
-  groupBy: 'item' | 'domain' | 'school'
+  groupBy: 'item' | 'domain' | 'school',
+  options: { isMultiSchool?: boolean } = {}
 ): Record<string, unknown>[] {
   if (groupBy === 'item') {
-    return [...rawRows].sort((a, b) => Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0));
+    const sorted = [...rawRows].sort((a, b) =>
+      Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0) ||
+      (options.isMultiSchool
+        ? String(a.schoolName ?? '').localeCompare(String(b.schoolName ?? ''))
+        : 0)
+    );
+    if (!options.isMultiSchool) return sorted;
+
+    // Multi-school + group-by-item: show each item once as a section header,
+    // then one data row per school underneath. Item text lives in the header
+    // so prompt / itemOrder are cleared from sub-rows to avoid redundancy.
+    const result: Record<string, unknown>[] = [];
+    let lastLabel = '';
+    for (const row of sorted) {
+      const label = String(row.questionLabel ?? '');
+      if (label !== lastLabel) {
+        result.push({
+          _sectionHeader: true,
+          _label: `${row.itemOrder}  ·  ${row.prompt}`,
+        });
+        lastLabel = label;
+      }
+      result.push({ ...row, prompt: '', itemOrder: '' });
+    }
+    return result;
   }
   if (groupBy === 'domain') {
     const sorted = [...rawRows].sort((a, b) => {
@@ -227,12 +263,19 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   const otherAdmins = filterOptions.administration.filter((a) => a !== selectedAdmin);
   const isMultiSchool = selectedSchools.length > 1;
 
-  // Comparison groups unlock only for a single school selection
+  // Comparison groups available for both single and multi-school
   function groupEnabled(group: ComparisonGroup): boolean {
-    if (selectedSchools.length !== 1) return false;
-    const s = selectedSchools[0];
-    if (group === 'city')    return Boolean(s?.city);
-    if (group === 'region')  return Boolean(s?.city || s?.region);
+    if (selectedSchools.length === 0) return false;
+    if (selectedSchools.length === 1) {
+      const s = selectedSchools[0];
+      if (group === 'city')    return Boolean(s?.city);
+      if (group === 'region')  return Boolean(s?.city || s?.region);
+      if (group === 'network') return true;
+      return false;
+    }
+    // Multi-school: enable if any selected school has the required data
+    if (group === 'city')    return selectedSchools.some((s) => Boolean(s?.city));
+    if (group === 'region')  return selectedSchools.some((s) => Boolean(s?.city || s?.region));
     if (group === 'network') return true;
     return false;
   }
@@ -246,8 +289,14 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   function handleSchoolsChange(newSchools: SchoolInfo[]) {
     setSelectedSchools(newSchools);
     if (newSchools.length > 1) {
-      // Multi-school: disable comparison groups
-      setComparisonGroups([]);
+      // Multi-school: keep any comparison groups that are still valid
+      setComparisonGroups((prev) =>
+        prev.filter((g) => {
+          if (g === 'city')   return newSchools.some((s) => Boolean(s?.city));
+          if (g === 'region') return newSchools.some((s) => Boolean(s?.city || s?.region));
+          return true; // network always valid
+        })
+      );
     } else if (newSchools.length === 1) {
       // Single school: clear groups no longer valid for this school
       const s = newSchools[0];
@@ -375,14 +424,20 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
 
   // ── Columns ──────────────────────────────────────────────────────────────────
 
+  // In multi-school + group-by-item, item info moves into section headers so
+  // # and Item columns are hidden from the column set (hideItemCols = true).
+  const hideItemCols = isMultiSchool && groupBy === 'item';
+
   const columns =
-    mode === 'comparison' || mode === 'charts' ? comparisonColumns(comparisonGroups, isMultiSchool) :
-    mode === 'history'                         ? historyColumns(loadedAdminA, loadedAdminB) :
-    COMMENTS_COLUMNS;
+    mode === 'comparison' || mode === 'charts'
+      ? comparisonColumns(comparisonGroups, isMultiSchool, hideItemCols)
+      : mode === 'history'
+      ? historyColumns(loadedAdminA, loadedAdminB)
+      : COMMENTS_COLUMNS;
 
   const rawRowsAsRecords = (rows ?? []) as unknown as Record<string, unknown>[];
   const rowsAsRecords = (mode === 'comparison' || mode === 'history')
-    ? applyGroupBy(rawRowsAsRecords, groupBy)
+    ? applyGroupBy(rawRowsAsRecords, groupBy, { isMultiSchool })
     : rawRowsAsRecords;
 
   // ── Render: Form phase ────────────────────────────────────────────────────────
@@ -520,7 +575,9 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
             <p className="text-xs font-medium text-[#5E738C] mb-2">
               Compare to
               {!schoolSelected && <span className="ml-1 text-slate-400">(select a school to unlock)</span>}
-              {isMultiSchool && <span className="ml-1 text-slate-400">(disabled in multi-school mode)</span>}
+              {isMultiSchool && comparisonGroups.length > 0 && (
+                <span className="ml-1 text-slate-400">(each school row shows its own comparison)</span>
+              )}
             </p>
             <div className="flex gap-4">
               {ALL_COMPARISON_GROUPS.map(({ value, label }) => {
@@ -548,7 +605,7 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
 
           {isMultiSchool && (
             <p className="text-xs text-slate-400">
-              {selectedSchools.length} schools selected — City/Region/Network comparison disabled. Results grouped by item by default.
+              {selectedSchools.length} schools selected — in Table view, group by Item to see schools nested under each item.
             </p>
           )}
         </div>
@@ -805,7 +862,7 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
           columns={columns}
           rows={rowsAsRecords}
           defaultSortKey={mode === 'comparison' || mode === 'history' ? 'itemOrder' : undefined}
-          disableSort={groupBy !== 'item'}
+          disableSort={groupBy !== 'item' || hideItemCols}
         />
       )}
     </div>
