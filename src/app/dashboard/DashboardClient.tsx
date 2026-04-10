@@ -207,17 +207,15 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
     return schools;
   })();
 
-  /** School_User cannot change their school selection */
-  const isSchoolLocked = acct === 'School_User';
-
   /** Site_Admin (and unauthenticated dev) see the debug panel */
   const showDebug = acct === 'Site_Admin' || acct === '';
 
-  // Pre-select schools for School_User on mount
+  // Pre-select all visible schools for School_User and Region_User on mount.
+  // They can deselect individual schools; the DDL is already scoped to their profile.
   useEffect(() => {
-    if (acct === 'School_User' && (userContext?.assignedSchools.length ?? 0) > 0 && selectedSchools.length === 0) {
-      const preselected = schools.filter((s) => userContext!.assignedSchools.includes(s.name));
-      if (preselected.length > 0) setSelectedSchools(preselected);
+    const restrictedAcct = acct === 'School_User' || acct === 'Region_User';
+    if (restrictedAcct && visibleSchools.length > 0 && selectedSchools.length === 0) {
+      setSelectedSchools(visibleSchools);
     }
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -516,8 +514,6 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
             schools={visibleSchools}
             selected={selectedSchools}
             onChange={handleSchoolsChange}
-            disabled={isSchoolLocked}
-            lockedNote={isSchoolLocked ? 'School access is managed by your account permissions.' : undefined}
           />
 
           <div>
