@@ -186,10 +186,6 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   // ── Secondary filters (applied after initial load) ──────────────────────────
   const [secondaryFilters, setSecondaryFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
-  // ── Hydration gate ───────────────────────────────────────────────────────────
-  // Show loading overlay until client hydration completes (covers iframe load experience)
-  const [isHydrated, setIsHydrated] = useState(false);
-
   // ── Permission-derived values ────────────────────────────────────────────────
 
   const acct = userContext?.accountType ?? '';
@@ -217,13 +213,12 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   /** Site_Admin (and unauthenticated dev) see the debug panel */
   const showDebug = acct === 'Site_Admin' || acct === '';
 
-  // Pre-select schools for School_User and complete hydration
+  // Pre-select schools for School_User on mount
   useEffect(() => {
     if (acct === 'School_User' && (userContext?.assignedSchools.length ?? 0) > 0 && selectedSchools.length === 0) {
       const preselected = schools.filter((s) => userContext!.assignedSchools.includes(s.name));
       if (preselected.length > 0) setSelectedSchools(preselected);
     }
-    setIsHydrated(true);
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -391,12 +386,6 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   const rowsAsRecords = (mode === 'comparison' || mode === 'history')
     ? applyGroupBy(rawRowsAsRecords, groupBy)
     : rawRowsAsRecords;
-
-  // ── Render: hydration loading overlay ────────────────────────────────────────
-
-  if (!isHydrated) {
-    return <LoadingOverlay message="Loading dashboard…" />;
-  }
 
   // ── Render: Form phase ────────────────────────────────────────────────────────
 
