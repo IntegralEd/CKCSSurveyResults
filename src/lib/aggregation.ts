@@ -222,7 +222,15 @@ export function buildComparisonRows(
   const includeNetwork = comparisonGroups.includes('network');
 
   return results
-    .filter((r) => r.itemOrder > 0 && r.prompt)
+    .filter((r) => {
+      if (!r.itemOrder || !r.prompt) return false;
+      // Exclude open-ended items — only include items with a Likert scale
+      if (itemMap) {
+        const item = itemMap.get(r.surveyItemRecordId);
+        if (item && item.likertScale === 0) return false;
+      }
+      return true;
+    })
     .sort((a, b) => a.itemOrder - b.itemOrder)
     .map((r) => {
       const item = itemMap?.get(r.surveyItemRecordId);

@@ -6,6 +6,7 @@ import ResultsTable from '@/components/ResultsTable';
 import ChartPanel from '@/components/ChartPanel';
 import DownloadButton from '@/components/DownloadButton';
 import MultiSelect from '@/components/MultiSelect';
+import SchoolMultiSelect from '@/components/SchoolMultiSelect';
 import type {
   FilterOptions,
   ActiveFilters,
@@ -107,16 +108,20 @@ function applyGroupBy(
     return [...rawRows].sort((a, b) => Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0));
   }
   if (groupBy === 'domain') {
-    const sorted = [...rawRows].sort((a, b) =>
-      String(a.domain ?? '').localeCompare(String(b.domain ?? '')) ||
-      Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0)
-    );
+    const sorted = [...rawRows].sort((a, b) => {
+      const da = String(a.domain ?? '');
+      const db = String(b.domain ?? '');
+      // Empty domain (open-ended / uncategorized) always sorts last
+      if (!da && db) return 1;
+      if (da && !db) return -1;
+      return da.localeCompare(db) || Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0);
+    });
     const result: Record<string, unknown>[] = [];
     let lastDomain = '';
     for (const row of sorted) {
       const d = String(row.domain ?? '');
       if (d !== lastDomain) {
-        result.push({ _sectionHeader: true, _label: d || 'Uncategorized' });
+        result.push({ _sectionHeader: true, _label: d || 'Open Ended / Uncategorized' });
         lastDomain = d;
       }
       result.push(row);
@@ -159,9 +164,8 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   // ── Form state ──────────────────────────────────────────────────────────────
   const [selectedAdmin, setSelectedAdmin] = useState('');
   const [compareAdmin, setCompareAdmin] = useState('');
-  const [selectedSchool, setSelectedSchool] = useState<SchoolInfo | null>(null);
+  const [selectedSchools, setSelectedSchools] = useState<SchoolInfo[]>([]);
   const [comparisonGroups, setComparisonGroups] = useState<ComparisonGroup[]>([]);
-  const [additionalSchools, setAdditionalSchools] = useState<SchoolInfo[]>([]);
   const [formFilters, setFormFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
   // ── Results state ───────────────────────────────────────────────────────────
@@ -178,17 +182,17 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   const [secondaryFilters, setSecondaryFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
-  const schoolSelected = selectedSchool !== null;
+  const schoolSelected = selectedSchools.length > 0;
   const canLoad = selectedAdmin.length > 0;
   const otherAdmins = filterOptions.administration.filter((a) => a !== selectedAdmin);
-  const allSelectedSchools = [selectedSchool, ...additionalSchools].filter(Boolean) as SchoolInfo[];
-  const isMultiSchool = allSelectedSchools.length > 1;
+  const isMultiSchool = selectedSchools.length > 1;
 
-  // Comparison groups unlock progressively based on school's city/region
+  // Comparison groups unlock only for a single school selection
   function groupEnabled(group: ComparisonGroup): boolean {
-    if (!schoolSelected || isMultiSchool) return false;
-    if (group === 'city')    return Boolean(selectedSchool?.city);
-    if (group === 'region')  return Boolean(selectedSchool?.city || selectedSchool?.region);
+    if (selectedSchools.length !== 1) return false;
+    const s = selectedSchools[0];
+    if (group === 'city')    return Boolean(s?.city);
+    if (group === 'region')  return Boolean(s?.city || s?.region);
     if (group === 'network') return true;
     return false;
   }
@@ -199,24 +203,24 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     );
   }
 
-  function handleSchoolChange(schoolName: string) {
-    if (!schoolName) {
-      setSelectedSchool(null);
+  function handleSchoolsChange(newSchools: SchoolInfo[]) {
+    setSelectedSchools(newSchools);
+    if (newSchools.length > 1) {
+      // Multi-school: disable comparison groups
       setComparisonGroups([]);
-      setAdditionalSchools([]);
-      return;
+    } else if (newSchools.length === 1) {
+      // Single school: clear groups no longer valid for this school
+      const s = newSchools[0];
+      setComparisonGroups((prev) =>
+        prev.filter((g) => {
+          if (g === 'city')   return Boolean(s?.city);
+          if (g === 'region') return Boolean(s?.city || s?.region);
+          return true;
+        })
+      );
+    } else {
+      setComparisonGroups([]);
     }
-    const school = schools.find((s) => s.name === schoolName) ?? null;
-    setSelectedSchool(school);
-    // Clear groups that are no longer valid for the new school
-    setComparisonGroups((prev) =>
-      prev.filter((g) => {
-        if (g === 'city')   return Boolean(school?.city);
-        if (g === 'region') return Boolean(school?.city || school?.region);
-        return true;
-      })
-    );
-    setAdditionalSchools([]);
   }
 
   // ── Fetch helpers ────────────────────────────────────────────────────────────
@@ -231,12 +235,12 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     setError(null);
 
     try {
-      if ((targetMode === 'comparison' || targetMode === 'charts') && allSelectedSchools.length > 0) {
+      if ((targetMode === 'comparison' || targetMode === 'charts') && selectedSchools.length > 0) {
         const res = await fetch('/api/comparison', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            schoolTxt: allSelectedSchools.map((s) => s.name),
+            schoolTxt: selectedSchools.map((s) => s.name),
             comparisonGroups,
             domain: formFilters.domain,
             administration: adminA,
@@ -256,7 +260,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             adminA,
             adminB,
             domain: formFilters.domain,
-            school: selectedSchool ? [selectedSchool.name] : [],
+            school: selectedSchools.length > 0 ? [selectedSchools[0].name] : [],
           }),
         });
         if (!res.ok) {
@@ -272,8 +276,8 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           ? secondary.administration
           : (adminA ? [adminA] : []);
         const base = mergeFilters({ ...formFilters, administration: commentAdmins }, secondary);
-        const filters = selectedSchool
-          ? { ...base, school: [selectedSchool.name] }
+        const filters = selectedSchools.length > 0
+          ? { ...base, school: selectedSchools.map((s) => s.name) }
           : base;
         const res = await fetch('/api/comments', {
           method: 'POST',
@@ -298,7 +302,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
   async function handleLoad() {
     const initialMode: ResultMode =
-      (schoolSelected && comparisonGroups.length > 0) || isMultiSchool ? 'comparison' :
+      (schoolSelected && (comparisonGroups.length > 0 || isMultiSchool)) ? 'comparison' :
       compareAdmin ? 'history' :
       'comments';
     setMode(initialMode);
@@ -391,46 +395,17 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             School <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
           </h2>
 
-          {/* Group schools by region, sorted */}
-          {(() => {
-            const regionMap = new Map<string, SchoolInfo[]>();
-            for (const s of schools) {
-              const r = s.region || 'Other';
-              if (!regionMap.has(r)) regionMap.set(r, []);
-              regionMap.get(r)!.push(s);
-            }
-            const regions = Array.from(regionMap.keys()).sort();
-            for (const r of regions) {
-              regionMap.get(r)!.sort((a, b) => {
-                const ca = a.city ?? '';
-                const cb = b.city ?? '';
-                return ca.localeCompare(cb) || a.name.localeCompare(b.name);
-              });
-            }
-            return (
-              <select
-                value={selectedSchool?.name ?? ''}
-                onChange={(e) => handleSchoolChange(e.target.value)}
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#17345B]"
-              >
-                <option value="">— All schools —</option>
-                {regions.map((region) => (
-                  <optgroup key={region} label={region}>
-                    {regionMap.get(region)!.map((s) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name}{s.city ? ` · ${s.city}` : ''}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            );
-          })()}
+            <SchoolMultiSelect
+            schools={schools}
+            selected={selectedSchools}
+            onChange={handleSchoolsChange}
+          />
 
           <div>
             <p className="text-xs font-medium text-[#5E738C] mb-2">
-              Compare to{!schoolSelected && <span className="ml-1 text-slate-400">(select a school to unlock)</span>}
-              {isMultiSchool && <span className="ml-1 text-slate-400">(disabled — multi-school mode)</span>}
+              Compare to
+              {!schoolSelected && <span className="ml-1 text-slate-400">(select a school to unlock)</span>}
+              {isMultiSchool && <span className="ml-1 text-slate-400">(disabled in multi-school mode)</span>}
             </p>
             <div className="flex gap-4">
               {ALL_COMPARISON_GROUPS.map(({ value, label }) => {
@@ -456,24 +431,10 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             </div>
           </div>
 
-          {/* Additional schools for multi-school comparison */}
-          {schoolSelected && (
-            <div>
-              <p className="text-xs font-medium text-[#5E738C] mb-2">
-                Compare to additional schools
-                <span className="ml-1 text-slate-400">(optional — disables City/Region/Network)</span>
-              </p>
-              <MultiSelect
-                label="Schools"
-                options={schools.filter((s) => s.name !== selectedSchool?.name).map((s) => s.name)}
-                selected={additionalSchools.map((s) => s.name)}
-                onChange={(names) => {
-                  const selected = names.map((n) => schools.find((s) => s.name === n)).filter(Boolean) as SchoolInfo[];
-                  setAdditionalSchools(selected);
-                  if (names.length > 0) setComparisonGroups([]);
-                }}
-              />
-            </div>
+          {isMultiSchool && (
+            <p className="text-xs text-slate-400">
+              {selectedSchools.length} schools selected — City/Region/Network comparison disabled. Results grouped by item by default.
+            </p>
           )}
         </div>
 
@@ -535,13 +496,13 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     <div className="space-y-4">
       {/* Context bar */}
       <div className="flex items-center gap-3 flex-wrap text-sm">
-        {selectedSchool && (
-          <span className="bg-[#17345B] text-white rounded-full px-3 py-1 text-xs font-medium">
-            {selectedSchool.name}
-          </span>
-        )}
-        {additionalSchools.map((s) => (
-          <span key={s.name} className="bg-[#255694] text-white rounded-full px-3 py-1 text-xs font-medium">
+        {selectedSchools.map((s, i) => (
+          <span
+            key={s.name}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              i === 0 ? 'bg-[#17345B] text-white' : 'bg-[#255694] text-white'
+            }`}
+          >
             {s.name}
           </span>
         ))}
@@ -619,7 +580,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             <button
               type="button"
               onClick={() => {
-                const name = csvFilename(selectedSchool?.name, loadedAdminA, 'charts');
+                const name = csvFilename(selectedSchools[0]?.name, loadedAdminA, 'charts');
                 const prev = document.title;
                 document.title = name.replace(/\.csv$/, '');
                 document.body.classList.add('print-charts');
@@ -637,8 +598,8 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
               columns={columns}
               filename={
                 mode === 'history'
-                  ? csvFilename(selectedSchool?.name, loadedAdminA, 'vs', loadedAdminB)
-                  : csvFilename(selectedSchool?.name ?? 'all', loadedAdminA, mode)
+                  ? csvFilename(selectedSchools[0]?.name, loadedAdminA, 'vs', loadedAdminB)
+                  : csvFilename(selectedSchools[0]?.name ?? 'all', loadedAdminA, mode)
               }
               disabled={!rows || rows.length === 0}
             />
@@ -718,9 +679,9 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           rows={rows as import('@/lib/types').ComparisonRow[]}
           groups={comparisonGroups}
           school={{
-            name:   selectedSchool?.name   ?? 'School',
-            city:   selectedSchool?.city   ?? undefined,
-            region: selectedSchool?.region ?? undefined,
+            name:   selectedSchools[0]?.name   ?? 'School',
+            city:   selectedSchools[0]?.city   ?? undefined,
+            region: selectedSchools[0]?.region ?? undefined,
           }}
         />
       )}
