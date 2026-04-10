@@ -19,7 +19,7 @@ import type { ComparisonGroup } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 interface ComparisonRequestBody {
-  schoolTxt: string;        // School_Txt value from Survey_School_Item_Results (= SchoolInfo.name)
+  schoolTxt: string | string[];   // School_Txt value(s) from Survey_School_Item_Results (= SchoolInfo.name)
   comparisonGroups: ComparisonGroup[];
   domain?: string[];
   administration?: string;  // Administration_Key to filter; dedup applied as safety net
@@ -34,9 +34,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { schoolTxt, comparisonGroups, domain = [], administration } = body;
+  const { schoolTxt: schoolTxtRaw, comparisonGroups, domain = [], administration } = body;
+  const schoolTxt = Array.isArray(schoolTxtRaw) ? schoolTxtRaw : (schoolTxtRaw ? [schoolTxtRaw] : []);
 
-  if (!schoolTxt) {
+  if (schoolTxt.length === 0) {
     return NextResponse.json(
       { error: 'Request body must include `schoolTxt`' },
       { status: 400 }
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const [rawResults, itemMapById] = await Promise.all([
-      fetchSchoolItemResults(schoolTxt),
+      fetchSchoolItemResults(schoolTxt.length === 1 ? schoolTxt[0] : schoolTxt),
       getItemMapById(),
     ]);
 
@@ -81,11 +82,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // Fall back to all records if key format doesn't match (e.g. record ID vs label)
       if (adminFiltered.length > 0) filtered = adminFiltered;
     }
-    // Dedup: keep first occurrence per questionLabel (results already sorted by itemOrder asc)
+    // Dedup: keep first occurrence per school+questionLabel (results already sorted by itemOrder asc)
     const seen = new Set<string>();
     filtered = filtered.filter((r) => {
-      if (seen.has(r.questionLabel)) return false;
-      seen.add(r.questionLabel);
+      const key = `${r.schoolTxt}|${r.questionLabel}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
 

@@ -26,32 +26,43 @@ const COMMENTS_COLUMNS = [
   { key: 'commentText',    label: 'Response',       width: '400px', minWidth: '280px' },
 ];
 
-function comparisonColumns(groups: ComparisonGroup[]) {
-  const cols: { key: string; label: string; width?: string; minWidth?: string; group?: string; groupStart?: boolean }[] = [
+function comparisonColumns(groups: ComparisonGroup[], multiSchool = false) {
+  const cols: { key: string; label: string; width?: string; minWidth?: string; group?: string; groupStart?: boolean }[] = [];
+  if (multiSchool) {
+    cols.push({ key: 'schoolName', label: 'School', width: '140px', minWidth: '120px' });
+  }
+  cols.push(
     { key: 'itemOrder', label: '#',    width: '40px',  minWidth: '40px' },
     { key: 'prompt',    label: 'Item', width: '320px', minWidth: '240px' },
-    { key: 'schoolN',       label: 'N',       width: '64px', group: 'School', groupStart: true },
-    { key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px', group: 'School' },
-    { key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px', group: 'School' },
-    { key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px', group: 'School' },
-  ];
-  if (groups.includes('city')) {
-    cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City',   groupStart: true });
-    cols.push({ key: 'cityTop1Pct', label: 'Top 1 %', width: '80px', group: 'City' });
-    cols.push({ key: 'cityTop2Pct', label: 'Top 2 %', width: '80px', group: 'City' });
-    cols.push({ key: 'cityTop3Pct', label: 'Top 3 %', width: '80px', group: 'City' });
-  }
-  if (groups.includes('region')) {
-    cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region', groupStart: true });
-    cols.push({ key: 'regionTop1Pct', label: 'Top 1 %', width: '80px', group: 'Region' });
-    cols.push({ key: 'regionTop2Pct', label: 'Top 2 %', width: '80px', group: 'Region' });
-    cols.push({ key: 'regionTop3Pct', label: 'Top 3 %', width: '80px', group: 'Region' });
-  }
-  if (groups.includes('network')) {
-    cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network', groupStart: true });
-    cols.push({ key: 'networkTop1Pct', label: 'Top 1 %', width: '80px', group: 'Network' });
-    cols.push({ key: 'networkTop2Pct', label: 'Top 2 %', width: '80px', group: 'Network' });
-    cols.push({ key: 'networkTop3Pct', label: 'Top 3 %', width: '80px', group: 'Network' });
+  );
+  if (multiSchool) {
+    cols.push({ key: 'schoolN',       label: 'N',       width: '64px' });
+    cols.push({ key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px' });
+    cols.push({ key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px' });
+    cols.push({ key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px' });
+  } else {
+    cols.push({ key: 'schoolN',       label: 'N',       width: '64px', group: 'School', groupStart: true });
+    cols.push({ key: 'schoolTop1Pct', label: 'Top 1 %', width: '80px', group: 'School' });
+    cols.push({ key: 'schoolTop2Pct', label: 'Top 2 %', width: '80px', group: 'School' });
+    cols.push({ key: 'schoolTop3Pct', label: 'Top 3 %', width: '80px', group: 'School' });
+    if (groups.includes('city')) {
+      cols.push({ key: 'cityN',       label: 'N',       width: '64px', group: 'City',   groupStart: true });
+      cols.push({ key: 'cityTop1Pct', label: 'Top 1 %', width: '80px', group: 'City' });
+      cols.push({ key: 'cityTop2Pct', label: 'Top 2 %', width: '80px', group: 'City' });
+      cols.push({ key: 'cityTop3Pct', label: 'Top 3 %', width: '80px', group: 'City' });
+    }
+    if (groups.includes('region')) {
+      cols.push({ key: 'regionN',       label: 'N',       width: '64px', group: 'Region', groupStart: true });
+      cols.push({ key: 'regionTop1Pct', label: 'Top 1 %', width: '80px', group: 'Region' });
+      cols.push({ key: 'regionTop2Pct', label: 'Top 2 %', width: '80px', group: 'Region' });
+      cols.push({ key: 'regionTop3Pct', label: 'Top 3 %', width: '80px', group: 'Region' });
+    }
+    if (groups.includes('network')) {
+      cols.push({ key: 'networkN',       label: 'N',       width: '64px', group: 'Network', groupStart: true });
+      cols.push({ key: 'networkTop1Pct', label: 'Top 1 %', width: '80px', group: 'Network' });
+      cols.push({ key: 'networkTop2Pct', label: 'Top 2 %', width: '80px', group: 'Network' });
+      cols.push({ key: 'networkTop3Pct', label: 'Top 3 %', width: '80px', group: 'Network' });
+    }
   }
   cols.push({ key: 'domain', label: 'Domain', width: '120px' });
   return cols;
@@ -86,6 +97,52 @@ function historyColumns(adminA: string, adminB: string) {
   ];
 }
 
+// ─── applyGroupBy helper ──────────────────────────────────────────────────────
+
+function applyGroupBy(
+  rawRows: Record<string, unknown>[],
+  groupBy: 'item' | 'domain' | 'school'
+): Record<string, unknown>[] {
+  if (groupBy === 'item') {
+    return [...rawRows].sort((a, b) => Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0));
+  }
+  if (groupBy === 'domain') {
+    const sorted = [...rawRows].sort((a, b) =>
+      String(a.domain ?? '').localeCompare(String(b.domain ?? '')) ||
+      Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0)
+    );
+    const result: Record<string, unknown>[] = [];
+    let lastDomain = '';
+    for (const row of sorted) {
+      const d = String(row.domain ?? '');
+      if (d !== lastDomain) {
+        result.push({ _sectionHeader: true, _label: d || 'Uncategorized' });
+        lastDomain = d;
+      }
+      result.push(row);
+    }
+    return result;
+  }
+  if (groupBy === 'school') {
+    const sorted = [...rawRows].sort((a, b) =>
+      String(a.schoolName ?? '').localeCompare(String(b.schoolName ?? '')) ||
+      Number(a.itemOrder ?? 0) - Number(b.itemOrder ?? 0)
+    );
+    const result: Record<string, unknown>[] = [];
+    let lastSchool = '';
+    for (const row of sorted) {
+      const s = String(row.schoolName ?? '');
+      if (s !== lastSchool) {
+        result.push({ _sectionHeader: true, _label: s || 'Unknown School' });
+        lastSchool = s;
+      }
+      result.push(row);
+    }
+    return result;
+  }
+  return rawRows;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase = 'form' | 'results';
@@ -104,11 +161,13 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   const [compareAdmin, setCompareAdmin] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<SchoolInfo | null>(null);
   const [comparisonGroups, setComparisonGroups] = useState<ComparisonGroup[]>([]);
+  const [additionalSchools, setAdditionalSchools] = useState<SchoolInfo[]>([]);
   const [formFilters, setFormFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
   // ── Results state ───────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('form');
   const [mode, setMode] = useState<ResultMode>('comments');
+  const [groupBy, setGroupBy] = useState<'item' | 'domain' | 'school'>('item');
   const [rows, setRows] = useState<AnyRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,10 +181,12 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   const schoolSelected = selectedSchool !== null;
   const canLoad = selectedAdmin.length > 0;
   const otherAdmins = filterOptions.administration.filter((a) => a !== selectedAdmin);
+  const allSelectedSchools = [selectedSchool, ...additionalSchools].filter(Boolean) as SchoolInfo[];
+  const isMultiSchool = allSelectedSchools.length > 1;
 
   // Comparison groups unlock progressively based on school's city/region
   function groupEnabled(group: ComparisonGroup): boolean {
-    if (!schoolSelected) return false;
+    if (!schoolSelected || isMultiSchool) return false;
     if (group === 'city')    return Boolean(selectedSchool?.city);
     if (group === 'region')  return Boolean(selectedSchool?.city || selectedSchool?.region);
     if (group === 'network') return true;
@@ -142,6 +203,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     if (!schoolName) {
       setSelectedSchool(null);
       setComparisonGroups([]);
+      setAdditionalSchools([]);
       return;
     }
     const school = schools.find((s) => s.name === schoolName) ?? null;
@@ -154,6 +216,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         return true;
       })
     );
+    setAdditionalSchools([]);
   }
 
   // ── Fetch helpers ────────────────────────────────────────────────────────────
@@ -168,12 +231,12 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
     setError(null);
 
     try {
-      if ((targetMode === 'comparison' || targetMode === 'charts') && selectedSchool) {
+      if ((targetMode === 'comparison' || targetMode === 'charts') && allSelectedSchools.length > 0) {
         const res = await fetch('/api/comparison', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            schoolTxt: selectedSchool.name,
+            schoolTxt: allSelectedSchools.map((s) => s.name),
             comparisonGroups,
             domain: formFilters.domain,
             administration: adminA,
@@ -235,10 +298,11 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
 
   async function handleLoad() {
     const initialMode: ResultMode =
-      schoolSelected && comparisonGroups.length > 0 ? 'comparison' :
+      (schoolSelected && comparisonGroups.length > 0) || isMultiSchool ? 'comparison' :
       compareAdmin ? 'history' :
       'comments';
     setMode(initialMode);
+    setGroupBy('item');
     setLoadedAdminA(selectedAdmin);
     setLoadedAdminB(compareAdmin);
     setSecondaryFilters(EMPTY_FILTERS);
@@ -268,11 +332,14 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
   // ── Columns ──────────────────────────────────────────────────────────────────
 
   const columns =
-    mode === 'comparison' || mode === 'charts' ? comparisonColumns(comparisonGroups) :
+    mode === 'comparison' || mode === 'charts' ? comparisonColumns(comparisonGroups, isMultiSchool) :
     mode === 'history'                         ? historyColumns(loadedAdminA, loadedAdminB) :
     COMMENTS_COLUMNS;
 
-  const rowsAsRecords = (rows ?? []) as unknown as Record<string, unknown>[];
+  const rawRowsAsRecords = (rows ?? []) as unknown as Record<string, unknown>[];
+  const rowsAsRecords = (mode === 'comparison' || mode === 'history')
+    ? applyGroupBy(rawRowsAsRecords, groupBy)
+    : rawRowsAsRecords;
 
   // ── Render: Form phase ────────────────────────────────────────────────────────
 
@@ -323,22 +390,47 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           <h2 className="text-sm font-semibold text-[#17345B] uppercase tracking-wide">
             School <span className="font-normal text-[#5E738C] normal-case">(optional)</span>
           </h2>
-          <select
-            value={selectedSchool?.name ?? ''}
-            onChange={(e) => handleSchoolChange(e.target.value)}
-            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#17345B]"
-          >
-            <option value="">— All schools —</option>
-            {schools.map((s) => (
-              <option key={s.id} value={s.name}>
-                {s.name}{s.city ? ` · ${s.city}` : ''}
-              </option>
-            ))}
-          </select>
+
+          {/* Group schools by region, sorted */}
+          {(() => {
+            const regionMap = new Map<string, SchoolInfo[]>();
+            for (const s of schools) {
+              const r = s.region || 'Other';
+              if (!regionMap.has(r)) regionMap.set(r, []);
+              regionMap.get(r)!.push(s);
+            }
+            const regions = Array.from(regionMap.keys()).sort();
+            for (const r of regions) {
+              regionMap.get(r)!.sort((a, b) => {
+                const ca = a.city ?? '';
+                const cb = b.city ?? '';
+                return ca.localeCompare(cb) || a.name.localeCompare(b.name);
+              });
+            }
+            return (
+              <select
+                value={selectedSchool?.name ?? ''}
+                onChange={(e) => handleSchoolChange(e.target.value)}
+                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-[#17345B]"
+              >
+                <option value="">— All schools —</option>
+                {regions.map((region) => (
+                  <optgroup key={region} label={region}>
+                    {regionMap.get(region)!.map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}{s.city ? ` · ${s.city}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            );
+          })()}
 
           <div>
             <p className="text-xs font-medium text-[#5E738C] mb-2">
               Compare to{!schoolSelected && <span className="ml-1 text-slate-400">(select a school to unlock)</span>}
+              {isMultiSchool && <span className="ml-1 text-slate-400">(disabled — multi-school mode)</span>}
             </p>
             <div className="flex gap-4">
               {ALL_COMPARISON_GROUPS.map(({ value, label }) => {
@@ -363,6 +455,26 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
               })}
             </div>
           </div>
+
+          {/* Additional schools for multi-school comparison */}
+          {schoolSelected && (
+            <div>
+              <p className="text-xs font-medium text-[#5E738C] mb-2">
+                Compare to additional schools
+                <span className="ml-1 text-slate-400">(optional — disables City/Region/Network)</span>
+              </p>
+              <MultiSelect
+                label="Schools"
+                options={schools.filter((s) => s.name !== selectedSchool?.name).map((s) => s.name)}
+                selected={additionalSchools.map((s) => s.name)}
+                onChange={(names) => {
+                  const selected = names.map((n) => schools.find((s) => s.name === n)).filter(Boolean) as SchoolInfo[];
+                  setAdditionalSchools(selected);
+                  if (names.length > 0) setComparisonGroups([]);
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── 3. Respondent filters (domain, gender, race) ── */}
@@ -428,6 +540,11 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
             {selectedSchool.name}
           </span>
         )}
+        {additionalSchools.map((s) => (
+          <span key={s.name} className="bg-[#255694] text-white rounded-full px-3 py-1 text-xs font-medium">
+            {s.name}
+          </span>
+        ))}
         {loadedAdminA && (
           <span className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-xs font-medium">
             {loadedAdminA}
@@ -462,27 +579,70 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         </button>
       </div>
 
-      {/* Tab toggle + N badge + download */}
+      {/* Tab toggle + group by toggle + download */}
       <div className="flex items-center gap-4 flex-wrap">
         <TabToggle
           mode={mode}
           onChange={handleModeChange}
-          showComparison={schoolSelected && comparisonGroups.length > 0}
+          showComparison={schoolSelected && (comparisonGroups.length > 0 || isMultiSchool)}
           showHistory={Boolean(loadedAdminB)}
         />
-        <div className="ml-auto">
-          <DownloadButton
-            rows={rowsAsRecords}
-            columns={columns}
-            filename={
-              mode === 'comparison' || mode === 'charts'
-                ? csvFilename(selectedSchool?.name, loadedAdminA, 'comparison')
-                : mode === 'history'
+
+        {/* Group by toggle */}
+        {(mode === 'comparison' || mode === 'charts' || mode === 'history') && (
+          <div
+            role="group"
+            aria-label="Group by"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+          >
+            <span className="px-2 text-xs text-slate-500 font-medium">Group by</span>
+            {(['item', 'domain', ...(isMultiSchool ? ['school'] : [])] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setGroupBy(opt as 'item' | 'domain' | 'school')}
+                className={[
+                  'px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize',
+                  groupBy === opt
+                    ? 'bg-[#17345B] text-white shadow-sm'
+                    : 'text-[#5E738C] hover:text-[#17345B] hover:bg-slate-200',
+                ].join(' ')}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {mode === 'charts' ? (
+            <button
+              type="button"
+              onClick={() => {
+                const name = csvFilename(selectedSchool?.name, loadedAdminA, 'charts');
+                const prev = document.title;
+                document.title = name.replace(/\.csv$/, '');
+                document.body.classList.add('print-charts');
+                window.print();
+                document.body.classList.remove('print-charts');
+                document.title = prev;
+              }}
+              className="px-3 py-1.5 rounded-md text-xs font-medium bg-[#17345B] text-white hover:bg-[#255694] transition-colors"
+            >
+              Download PDF
+            </button>
+          ) : (
+            <DownloadButton
+              rows={rowsAsRecords.filter((r) => !r._sectionHeader)}
+              columns={columns}
+              filename={
+                mode === 'history'
                   ? csvFilename(selectedSchool?.name, loadedAdminA, 'vs', loadedAdminB)
-                  : csvFilename(selectedSchool?.name ?? 'all', loadedAdminA, 'comments')
-            }
-            disabled={!rows || rows.length === 0 || mode === 'charts'}
-          />
+                  : csvFilename(selectedSchool?.name ?? 'all', loadedAdminA, mode)
+              }
+              disabled={!rows || rows.length === 0}
+            />
+          )}
         </div>
       </div>
 
@@ -557,7 +717,11 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
         <ChartPanel
           rows={rows as import('@/lib/types').ComparisonRow[]}
           groups={comparisonGroups}
-          schoolName={selectedSchool?.name ?? 'School'}
+          school={{
+            name:   selectedSchool?.name   ?? 'School',
+            city:   selectedSchool?.city   ?? undefined,
+            region: selectedSchool?.region ?? undefined,
+          }}
         />
       )}
 
@@ -567,6 +731,7 @@ export default function DashboardClient({ filterOptions, schools }: Props) {
           columns={columns}
           rows={rowsAsRecords}
           defaultSortKey={mode === 'comparison' || mode === 'history' ? 'itemOrder' : undefined}
+          disableSort={groupBy !== 'item'}
         />
       )}
     </div>

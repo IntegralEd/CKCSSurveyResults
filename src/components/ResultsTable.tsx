@@ -23,6 +23,8 @@ interface Props {
   rows: Record<string, unknown>[];
   /** Default sort key — rows are pre-sorted by this field; column header clicks override */
   defaultSortKey?: string;
+  /** When true, hide sort indicators, ignore header clicks, render rows in given order */
+  disableSort?: boolean;
 }
 
 type SortDir = 'asc' | 'desc';
@@ -34,8 +36,9 @@ type SortDir = 'asc' | 'desc';
  *   - Per-column width control
  *   - Floating horizontal scrollbar that stays pinned at the bottom of the
  *     viewport while the user scrolls the page vertically
+ *   - Section header rows (row._sectionHeader = true) rendered as full-width dividers
  */
-export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
+export default function ResultsTable({ columns, rows, defaultSortKey, disableSort = false }: Props) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSortKey ?? null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -71,6 +74,7 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
   }, []);
 
   function handleHeaderClick(key: string) {
+    if (disableSort) return;
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -79,18 +83,20 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
     }
   }
 
-  const sortedRows = sortKey
-    ? [...rows].sort((a, b) => {
-        const av = a[sortKey];
-        const bv = b[sortKey];
-        const aNum = typeof av === 'number' ? av : parseFloat(String(av ?? ''));
-        const bNum = typeof bv === 'number' ? bv : parseFloat(String(bv ?? ''));
-        if (!isNaN(aNum) && !isNaN(bNum)) return sortDir === 'asc' ? aNum - bNum : bNum - aNum;
-        return sortDir === 'asc'
-          ? String(av ?? '').localeCompare(String(bv ?? ''))
-          : String(bv ?? '').localeCompare(String(av ?? ''));
-      })
-    : rows;
+  const sortedRows = disableSort
+    ? rows
+    : sortKey
+      ? [...rows].sort((a, b) => {
+          const av = a[sortKey];
+          const bv = b[sortKey];
+          const aNum = typeof av === 'number' ? av : parseFloat(String(av ?? ''));
+          const bNum = typeof bv === 'number' ? bv : parseFloat(String(bv ?? ''));
+          if (!isNaN(aNum) && !isNaN(bNum)) return sortDir === 'asc' ? aNum - bNum : bNum - aNum;
+          return sortDir === 'asc'
+            ? String(av ?? '').localeCompare(String(bv ?? ''))
+            : String(bv ?? '').localeCompare(String(av ?? ''));
+        })
+      : rows;
 
   return (
     <div>
@@ -107,54 +113,70 @@ export default function ResultsTable({ columns, rows, defaultSortKey }: Props) {
               sortKey={sortKey}
               sortDir={sortDir}
               onHeaderClick={handleHeaderClick}
+              disableSort={disableSort}
             />
           </thead>
           <tbody>
-            {sortedRows.map((row, rowIdx) => (
-              <tr
-                key={rowIdx}
-                className={[
-                  rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50',
-                  'hover:bg-[#17345B]/5 transition-colors',
-                ].join(' ')}
-              >
-                {columns.map((col) => {
-                  const val = row[col.key];
-                  const isNum = typeof val === 'number';
-                  const isPct = col.key.toLowerCase().includes('pct');
-                  const display =
-                    val == null ? '—'
-                    : isPct
-                      ? `${(val as number).toFixed(1)}%`
-                    : isNum && Number.isInteger(val as number)
-                      ? (val as number).toLocaleString()
-                    : isNum
-                      ? (val as number).toFixed(1)
-                    : String(val);
-
-                  const isWide = col.key === 'prompt' || col.key === 'commentText';
-                  const isTopN = isPct;
-                  const isOrder = col.key === 'itemOrder';
-
-                  return (
+            {sortedRows.map((row, rowIdx) => {
+              // Section header row
+              if (row._sectionHeader) {
+                return (
+                  <tr key={`header-${rowIdx}`}>
                     <td
-                      key={col.key}
-                      style={{ width: col.width, minWidth: col.minWidth ?? col.width }}
-                      className={[
-                        'px-3 py-2 border-b border-slate-100 align-top',
-                        isNum && !isWide ? 'text-right tabular-nums' : 'text-left',
-                        isWide ? 'whitespace-normal' : 'whitespace-nowrap',
-                        isTopN ? 'bg-[#17345B]/[0.04] font-medium text-[#17345B]' : '',
-                        isOrder ? 'text-center text-slate-400 text-xs' : '',
-                        col.groupStart ? 'border-l-[3px] border-l-slate-400' : '',
-                      ].join(' ')}
+                      colSpan={columns.length}
+                      className="px-3 py-2 text-xs font-semibold text-[#17345B] bg-[#17345B]/[0.06] border-b border-slate-200 uppercase tracking-wide"
                     >
-                      {display}
+                      {String(row._label ?? '')}
                     </td>
-                  );
-                })}
-              </tr>
-            ))}
+                  </tr>
+                );
+              }
+              return (
+                <tr
+                  key={rowIdx}
+                  className={[
+                    rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50',
+                    'hover:bg-[#17345B]/5 transition-colors',
+                  ].join(' ')}
+                >
+                  {columns.map((col) => {
+                    const val = row[col.key];
+                    const isNum = typeof val === 'number';
+                    const isPct = col.key.toLowerCase().includes('pct');
+                    const display =
+                      val == null ? '—'
+                      : isPct
+                        ? `${(val as number).toFixed(1)}%`
+                      : isNum && Number.isInteger(val as number)
+                        ? (val as number).toLocaleString()
+                      : isNum
+                        ? (val as number).toFixed(1)
+                      : String(val);
+
+                    const isWide = col.key === 'prompt' || col.key === 'commentText';
+                    const isTopN = isPct;
+                    const isOrder = col.key === 'itemOrder';
+
+                    return (
+                      <td
+                        key={col.key}
+                        style={{ width: col.width, minWidth: col.minWidth ?? col.width }}
+                        className={[
+                          'px-3 py-2 border-b border-slate-100 align-top',
+                          isNum && !isWide ? 'text-right tabular-nums' : 'text-left',
+                          isWide ? 'whitespace-normal' : 'whitespace-nowrap',
+                          isTopN ? 'bg-[#17345B]/[0.04] font-medium text-[#17345B]' : '',
+                          isOrder ? 'text-center text-slate-400 text-xs' : '',
+                          col.groupStart ? 'border-l-[3px] border-l-slate-400' : '',
+                        ].join(' ')}
+                      >
+                        {display}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -178,9 +200,10 @@ interface GroupedHeaderProps {
   sortKey: string | null;
   sortDir: SortDir;
   onHeaderClick: (key: string) => void;
+  disableSort?: boolean;
 }
 
-function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHeaderProps) {
+function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick, disableSort }: GroupedHeaderProps) {
   const hasGroups = columns.some((c) => c.group);
 
   const thStyle = (col: TableColumn) => ({
@@ -190,8 +213,10 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
   const thClass = (active: boolean) =>
     [
       'px-3 py-2.5 text-left font-medium border-b border-slate-200',
-      'cursor-pointer select-none hover:bg-slate-200 transition-colors',
-      active ? 'text-[#17345B]' : '',
+      disableSort
+        ? 'pointer-events-none opacity-70'
+        : 'cursor-pointer select-none hover:bg-slate-200 transition-colors',
+      active && !disableSort ? 'text-[#17345B]' : '',
     ].join(' ');
 
   if (!hasGroups) {
@@ -206,7 +231,7 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
           >
             <span className="inline-flex items-center gap-1">
               {col.label}
-              <SortIndicator active={sortKey === col.key} dir={sortDir} />
+              {!disableSort && <SortIndicator active={sortKey === col.key} dir={sortDir} />}
             </span>
           </th>
         ))}
@@ -254,7 +279,7 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
               >
                 <span className="inline-flex items-center gap-1">
                   {gs.col.label}
-                  <SortIndicator active={sortKey === gs.col.key} dir={sortDir} />
+                  {!disableSort && <SortIndicator active={sortKey === gs.col.key} dir={sortDir} />}
                 </span>
               </th>
             );
@@ -284,7 +309,7 @@ function GroupedHeader({ columns, sortKey, sortDir, onHeaderClick }: GroupedHead
           >
             <span className="inline-flex items-center gap-1">
               {col.label}
-              <SortIndicator active={sortKey === col.key} dir={sortDir} />
+              {!disableSort && <SortIndicator active={sortKey === col.key} dir={sortDir} />}
             </span>
           </th>
         ))}

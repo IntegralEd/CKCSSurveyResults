@@ -236,6 +236,7 @@ export function buildComparisonRows(
         prompt: r.prompt,
         domain,
         itemOrder: r.itemOrder,
+        schoolName: r.schoolTxt,
         schoolN: r.schoolN,
         schoolTop1Pct,
         schoolTop2Pct: r.schoolTop2Pct,

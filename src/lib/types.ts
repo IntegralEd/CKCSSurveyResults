@@ -273,6 +273,7 @@ export interface ComparisonRow {
   prompt: string;
   domain: string;
   itemOrder: number;
+  schoolName: string;   // ← add this
   // School
   schoolN: number;
   schoolTop1Pct: number;

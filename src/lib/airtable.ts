@@ -263,10 +263,17 @@ function lookupStr(val: unknown): string {
  *
  * @param schoolTxt  School_Txt value from Survey_School_Item_Results (= SchoolInfo.name)
  */
-export async function fetchSchoolItemResults(schoolTxt: string): Promise<SchoolItemResult[]> {
-  const escaped = schoolTxt.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+export async function fetchSchoolItemResults(schoolTxt: string | string[]): Promise<SchoolItemResult[]> {
+  const schools = Array.isArray(schoolTxt) ? schoolTxt : [schoolTxt];
+  const conditions = schools.map((s) => {
+    const esc = s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return `{School_Txt} = "${esc}"`;
+  });
+  const filterByFormula = conditions.length === 1
+    ? conditions[0]
+    : `OR(${conditions.join(', ')})`;
   const records = await fetchAllRecords(TABLE_SCHOOL_ITEM_RESULTS, {
-    filterByFormula: `{School_Txt} = "${escaped}"`,
+    filterByFormula,
     fields: Object.values(SCHOOL_RESULT_FIELDS),
     sort: [{ field: SCHOOL_RESULT_FIELDS.itemOrder, direction: 'asc' }],
   });
