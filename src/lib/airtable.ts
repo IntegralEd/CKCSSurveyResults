@@ -8,7 +8,7 @@
  * Table IDs confirmed from schema registry.
  */
 import Airtable from 'airtable';
-import type { SurveyRespondent, SurveyItem, SurveyItemComment, SchoolInfo, SchoolItemResult } from './types';
+import type { SurveyRespondent, SurveyItem, SurveyItemComment, SchoolInfo, SchoolItemResult, AccountType } from './types';
 
 // ─── Environment variables ────────────────────────────────────────────────────
 
@@ -33,6 +33,8 @@ export const TABLE_COMMENTS =
   process.env.AIRTABLE_TABLE_COMMENTS ?? 'tbla8CWwKDBuQwmtq';
 export const TABLE_SCHOOL_ITEM_RESULTS = 'tblwEdi9EQhCsixNd';
 export const TABLE_SCHOOLS = 'tblTyVLW0R8MxmQ0S';
+export const TABLE_USERS_SYNC = 'tblWQJewTlrkfypPP';
+export const TABLE_REGIONS = 'tblKXWbABAC2WoXCn';
 
 // ─── Client ───────────────────────────────────────────────────────────────────
 
@@ -317,6 +319,74 @@ export async function fetchSchoolItemResults(schoolTxt: string | string[]): Prom
       networkTop3Pct: pctField(f[SCHOOL_RESULT_FIELDS.networkTop3Pct]),
     };
   });
+}
+
+// ─── Users_Sync permission lookup ─────────────────────────────────────────────
+
+/**
+ * Fetch authoritative permissions for a logged-in user from the Users_Sync table.
+ *
+ * Uses School_Access_Formula (precomputed multilineText) as the canonical school list —
+ * it aggregates both directly-assigned schools AND schools inherited from Assigned_Regions,
+ * making it the most robust permission gate without extra joins.
+ *
+ * Assigned_Regions record IDs are resolved to Region_Name strings via a separate fetch.
+ *
+ * Returns null when no matching user record is found (treat as full-access dev mode).
+ */
+export async function fetchUserPermissions(email: string): Promise<{
+  accountType: AccountType;
+  assignedSchools: string[];
+  assignedRegions: string[];
+} | null> {
+  if (!email) return null;
+
+  const esc = email.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const records = await fetchAllRecords(TABLE_USERS_SYNC, {
+    filterByFormula: `{Email} = "${esc}"`,
+    maxRecords: 1,
+    fields: ['Email', 'Account_Type', 'School_Access_Formula', 'Assigned_Regions'],
+  });
+
+  if (records.length === 0) return null;
+
+  const f = records[0].fields as Record<string, unknown>;
+
+  const validTypes: AccountType[] = ['Site_Admin', 'Client_Admin', 'Region_User', 'School_User'];
+  const rawType = String(f['Account_Type'] ?? '');
+  const accountType: AccountType = (validTypes as string[]).includes(rawType)
+    ? (rawType as AccountType)
+    : '';
+
+  // School_Access_Formula is a precomputed comma-separated list of school names.
+  // It unions schools from Assigned_Schools and schools from Assigned_Regions links,
+  // so it is the authoritative list for all account types.
+  const schoolFormula = String(f['School_Access_Formula'] ?? '');
+  const assignedSchools = schoolFormula
+    ? schoolFormula.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  // Assigned_Regions is multipleRecordLinks — resolve IDs to Region_Name strings.
+  const rawRegions = f['Assigned_Regions'];
+  const regionIds = Array.isArray(rawRegions) ? rawRegions.map(String) : [];
+
+  let assignedRegions: string[] = [];
+  if (regionIds.length > 0) {
+    const regionConditions = regionIds.map((id) => `RECORD_ID() = "${id}"`);
+    const regionFilter =
+      regionConditions.length === 1
+        ? regionConditions[0]
+        : `OR(${regionConditions.join(', ')})`;
+    const regionRecords = await fetchAllRecords(TABLE_REGIONS, {
+      filterByFormula: regionFilter,
+      fields: ['Region_Name'],
+    });
+    assignedRegions = regionRecords
+      .map((r) => String((r.fields as Record<string, unknown>)['Region_Name'] ?? ''))
+      .filter(Boolean);
+  }
+
+  return { accountType, assignedSchools, assignedRegions };
 }
 
 // ─── Legacy FIELDS alias (kept for backward compatibility) ────────────────────

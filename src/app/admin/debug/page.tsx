@@ -21,6 +21,7 @@ import {
   fetchRespondents,
   fetchComments,
   fetchSchoolItemResults,
+  fetchUserPermissions,
   fetchAllRecords,
   SLICER_FIELDS,
   ITEM_FIELDS,
@@ -35,7 +36,23 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export default async function DebugPage() {
+export default async function DebugPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
+  // ── User permissions lookup (?testEmail=...) ──────────────────────────────
+  const rawTestEmail = searchParams?.testEmail;
+  const testEmail = typeof rawTestEmail === 'string' ? rawTestEmail.trim() : '';
+  let userPerms: Awaited<ReturnType<typeof fetchUserPermissions>> = null;
+  let userPermsError: string | null = null;
+  if (testEmail) {
+    try {
+      userPerms = await fetchUserPermissions(testEmail);
+    } catch (e) {
+      userPermsError = e instanceof Error ? e.message : String(e);
+    }
+  }
   let filterOptions: Awaited<ReturnType<typeof getFilterOptions>> | null = null;
   let filterError: string | null = null;
 
@@ -256,6 +273,107 @@ export default async function DebugPage() {
   return (
     <div className="space-y-10 max-w-4xl p-6">
       <h1 className="text-xl font-semibold text-[#17345B]">Airtable Debug</h1>
+
+      {/* ── User Permissions Lookup ─────────────────────────────────────── */}
+      <section>
+        <h2 className="text-base font-semibold text-[#17345B] mb-2">
+          User Permissions Lookup
+        </h2>
+        <p className="text-xs text-[#5E738C] mb-3">
+          Add <code className="bg-slate-100 rounded px-1">?testEmail=user@example.com</code> to resolve
+          permissions from Users_Sync for any email. Uses{' '}
+          <code className="bg-slate-100 rounded px-1">School_Access_Formula</code> for school list
+          and resolves <code className="bg-slate-100 rounded px-1">Assigned_Regions</code> record IDs to names.
+        </p>
+
+        {/* Email input form (GET) */}
+        <form method="GET" className="flex items-center gap-2 mb-4">
+          <input
+            name="testEmail"
+            type="email"
+            defaultValue={testEmail}
+            placeholder="test@example.com"
+            className="border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-[#17345B] w-72"
+          />
+          <button
+            type="submit"
+            className="px-4 py-1.5 rounded-md text-sm font-medium bg-[#17345B] text-white hover:bg-[#255694] transition-colors"
+          >
+            Lookup
+          </button>
+        </form>
+
+        {testEmail && (
+          userPermsError ? (
+            <pre className="bg-red-50 border border-red-200 text-red-700 rounded p-4 text-xs overflow-auto">
+              {userPermsError}
+            </pre>
+          ) : userPerms === null ? (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded p-4 text-sm">
+              No record found in Users_Sync for <strong>{testEmail}</strong>.
+              This user will receive full-access (dev) defaults.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded p-4 space-y-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs font-semibold text-[#5E738C] uppercase tracking-wide">Email</span>
+                  <span className="text-sm font-mono text-slate-800">{testEmail}</span>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs font-semibold text-[#5E738C] uppercase tracking-wide">accountType</span>
+                  <span className="rounded px-2 py-0.5 text-xs font-mono text-white" style={{ background: '#17345B' }}>
+                    {userPerms.accountType || '(none)'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-[#5E738C] uppercase tracking-wide block mb-1.5">
+                    assignedSchools ({userPerms.assignedSchools.length}) — from School_Access_Formula
+                  </span>
+                  {userPerms.assignedSchools.length === 0 ? (
+                    <span className="text-xs text-slate-400">— none —</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {userPerms.assignedSchools.map((s) => (
+                        <span
+                          key={s}
+                          className="rounded px-2 py-0.5 text-xs text-white"
+                          style={{ background: '#255694' }}
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-[#5E738C] uppercase tracking-wide block mb-1.5">
+                    assignedRegions ({userPerms.assignedRegions.length})
+                  </span>
+                  {userPerms.assignedRegions.length === 0 ? (
+                    <span className="text-xs text-slate-400">— none —</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {userPerms.assignedRegions.map((r) => (
+                        <span
+                          key={r}
+                          className="rounded px-2 py-0.5 text-xs font-medium"
+                          style={{ background: '#BCD631', color: '#17345B' }}
+                        >
+                          {r}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <pre className="bg-slate-50 border border-slate-200 rounded p-3 text-xs overflow-auto">
+                {JSON.stringify(userPerms, null, 2)}
+              </pre>
+            </div>
+          )
+        )}
+      </section>
 
       {/* ── Section 6a: Raw School_Txt sample ─────────────────────────── */}
       <section>

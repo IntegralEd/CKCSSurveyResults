@@ -1,0 +1,129 @@
+================================================================================
+  CKCS Survey Results — Softr Custom Code Block
+  Place this in a "Custom Code" block on the Softr page where the dashboard lives.
+  Softr evaluates {LOGGED_IN_USER:field} server-side before the browser receives it.
+================================================================================
+
+ACCOUNT TYPE VALUES (set in the Airtable Users / Members table):
+  Site_Admin   — full access + "Site Admin" badge visible in dashboard
+  Client_Admin — full access to all schools and regions
+  Region_User  — school picker filtered to their Assigned_Regions
+  School_User  — school picker locked to their Assigned_Schools;
+                 can still compare to City / Region / Network
+
+URL PARAMS SENT TO IFRAME:
+  userEmail        — logged-in user's email
+  accountType      — one of the four values above
+  assignedSchools  — comma-separated school names  (e.g. "Austin Brave,KIPP Austin")
+  assignedRegions  — comma-separated region names  (e.g. "Texas,California")
+
+================================================================================
+
+<!-- ── User context — hidden spans, rendered server-side by Softr ─────────── -->
+<span id="ckcs-user-email"           style="display:none">{LOGGED_IN_USER:email}</span>
+<span id="ckcs-user-account-type"    style="display:none">{LOGGED_IN_USER:Account_Type}</span>
+<span id="ckcs-user-assigned-schools" style="display:none">{LOGGED_IN_USER:Assigned_Schools}</span>
+<span id="ckcs-user-assigned-regions" style="display:none">{LOGGED_IN_USER:Assigned_Regions}</span>
+
+<!-- ── Dashboard iframe ───────────────────────────────────────────────────── -->
+<iframe
+  id="ckcs-dashboard"
+  style="width:100%; min-height:920px; border:none; border-radius:8px; display:block;"
+  allow="clipboard-write"
+  title="CKCS Survey Results Dashboard"
+></iframe>
+
+<script>
+(function () {
+  // ── 1. Read Softr-rendered user context ───────────────────────────────────
+  function spanText(id) {
+    return (document.getElementById(id) || {}).textContent.trim() || '';
+  }
+
+  var userEmail        = spanText('ckcs-user-email');
+  var accountType      = spanText('ckcs-user-account-type');
+  var assignedSchools  = spanText('ckcs-user-assigned-schools');
+  var assignedRegions  = spanText('ckcs-user-assigned-regions');
+
+  // ── 2. Build iframe src with user context as query params ─────────────────
+  //       The Next.js dashboard reads these on the server to apply permissions.
+  var base = 'https://ckcs-survey-results.vercel.app/dashboard';
+  var params = new URLSearchParams();
+
+  if (userEmail)       params.set('userEmail',       userEmail);
+  if (accountType)     params.set('accountType',     accountType);
+  if (assignedSchools) params.set('assignedSchools', assignedSchools);
+  if (assignedRegions) params.set('assignedRegions', assignedRegions);
+
+  var src = params.toString() ? (base + '?' + params.toString()) : base;
+
+  document.getElementById('ckcs-dashboard').src = src;
+
+  // ── 3. Console log for admin debugging (safe to leave in — no secrets) ────
+  if (accountType === 'Site_Admin') {
+    console.log('[CKCS] user context loaded:', {
+      email: userEmail, accountType: accountType,
+      schools: assignedSchools, regions: assignedRegions,
+    });
+  }
+
+  // ── 4. Auto-resize iframe to content height ───────────────────────────────
+  //       The dashboard can post CKCS_RESIZE messages; wire up here when ready.
+  window.addEventListener('message', function (event) {
+    if (event.origin !== 'https://ckcs-survey-results.vercel.app') return;
+    if (event.data && event.data.type === 'CKCS_RESIZE' && typeof event.data.height === 'number') {
+      document.getElementById('ckcs-dashboard').style.minHeight = event.data.height + 'px';
+    }
+  });
+
+  // ── 5. Future: receive ready signal and enforce DDL scope ─────────────────
+  //       When the app is updated to accept postMessage permissions, uncomment:
+  //
+  // window.addEventListener('message', function (event) {
+  //   if (event.origin !== 'https://ckcs-survey-results.vercel.app') return;
+  //   if (event.data && event.data.type === 'CKCS_READY') {
+  //     document.getElementById('ckcs-dashboard').contentWindow.postMessage(
+  //       {
+  //         type: 'CKCS_USER_CONTEXT',
+  //         payload: {
+  //           email:           userEmail,
+  //           accountType:     accountType,
+  //           assignedSchools: assignedSchools.split(',').map(function(s){ return s.trim(); }),
+  //           assignedRegions: assignedRegions.split(',').map(function(s){ return s.trim(); }),
+  //         }
+  //       },
+  //       'https://ckcs-survey-results.vercel.app'
+  //     );
+  //   }
+  // });
+
+})();
+</script>
+
+================================================================================
+  PERMISSION MATRIX
+================================================================================
+
+  accountType     | Visible schools          | Picker locked? | City/Region/Network compare
+  ────────────────┼──────────────────────────┼────────────────┼────────────────────────────
+  Site_Admin      | All                      | No             | Yes (all groups)
+  Client_Admin    | All                      | No             | Yes (all groups)
+  Region_User     | Schools in assignedRegions| No            | Yes (all groups)
+  School_User     | Only assignedSchools     | Yes (locked)   | Yes (all groups enabled)
+  (none / direct) | All                      | No             | Yes (all groups)
+
+================================================================================
+  AIRTABLE FIELDS REQUIRED ON YOUR USERS/MEMBERS TABLE
+================================================================================
+
+  Field name         | Type            | Example values
+  ───────────────────┼─────────────────┼──────────────────────────────────────
+  Account_Type       | Single select   | Site_Admin, Client_Admin, Region_User, School_User
+  Assigned_Schools   | Long text       | Austin Brave, KIPP Austin Academy
+  Assigned_Regions   | Long text       | Texas, California
+
+  Note: Softr passes multi-select / long-text fields as a comma-separated string
+  in the {LOGGED_IN_USER:field} token. The embed code and Next.js app both
+  split on commas to reconstruct the list.
+
+================================================================================

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import TabToggle from '@/components/TabToggle';
 import ResultsTable from '@/components/ResultsTable';
 import ChartPanel from '@/components/ChartPanel';
 import DownloadButton from '@/components/DownloadButton';
 import MultiSelect from '@/components/MultiSelect';
 import SchoolMultiSelect from '@/components/SchoolMultiSelect';
-import { useEffect } from 'react';
+
+const LoadingOverlay = dynamic(() => import('@/components/LoadingOverlay'), { ssr: false });
 import type {
   FilterOptions,
   ActiveFilters,
@@ -184,22 +186,27 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   // ── Secondary filters (applied after initial load) ──────────────────────────
   const [secondaryFilters, setSecondaryFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
 
+  // ── Hydration gate ───────────────────────────────────────────────────────────
+  // Show loading overlay until client hydration completes (covers iframe load experience)
+  const [isHydrated, setIsHydrated] = useState(false);
+
   // ── Permission-derived values ────────────────────────────────────────────────
 
   const acct = userContext?.accountType ?? '';
 
   /**
-   * Schools visible in the picker, filtered by account type:
-   *   Site_Admin / Client_Admin / '' → all schools
-   *   Region_User → schools whose region is in assignedRegions
-   *   School_User → only their assigned school(s)
+   * Schools visible in the picker — driven by School_Access_Formula (assignedSchools).
+   *
+   * Site_Admin and unauthenticated (dev) users always see all schools.
+   * All other account types are limited to the schools in assignedSchools,
+   * which Airtable pre-computes as the union of direct assignments + region assignments.
+   * Falls back to all schools when assignedSchools is empty (unset in Airtable).
    */
   const visibleSchools: SchoolInfo[] = (() => {
-    if (acct === 'Region_User' && (userContext?.assignedRegions.length ?? 0) > 0) {
-      return schools.filter((s) => userContext!.assignedRegions.includes(s.region));
-    }
-    if (acct === 'School_User' && (userContext?.assignedSchools.length ?? 0) > 0) {
-      return schools.filter((s) => userContext!.assignedSchools.includes(s.name));
+    if (acct === 'Site_Admin' || acct === '') return schools;
+    const assigned = userContext?.assignedSchools ?? [];
+    if (assigned.length > 0) {
+      return schools.filter((s) => assigned.includes(s.name));
     }
     return schools;
   })();
@@ -207,15 +214,16 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
   /** School_User cannot change their school selection */
   const isSchoolLocked = acct === 'School_User';
 
-  /** Site_Admin sees the debug panel link */
+  /** Site_Admin (and unauthenticated dev) see the debug panel */
   const showDebug = acct === 'Site_Admin' || acct === '';
 
-  // Pre-select schools for School_User on first render
+  // Pre-select schools for School_User and complete hydration
   useEffect(() => {
     if (acct === 'School_User' && (userContext?.assignedSchools.length ?? 0) > 0 && selectedSchools.length === 0) {
       const preselected = schools.filter((s) => userContext!.assignedSchools.includes(s.name));
       if (preselected.length > 0) setSelectedSchools(preselected);
     }
+    setIsHydrated(true);
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -384,11 +392,92 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
     ? applyGroupBy(rawRowsAsRecords, groupBy)
     : rawRowsAsRecords;
 
+  // ── Render: hydration loading overlay ────────────────────────────────────────
+
+  if (!isHydrated) {
+    return <LoadingOverlay message="Loading dashboard…" />;
+  }
+
   // ── Render: Form phase ────────────────────────────────────────────────────────
 
   if (phase === 'form') {
     return (
       <div className="max-w-2xl space-y-6">
+
+        {/* ── Debug: user context (Site_Admin / dev only) ── */}
+        {showDebug && userContext && (
+          <details
+            className="rounded-lg border text-xs"
+            style={{ borderColor: 'rgba(23,52,91,0.15)', background: 'rgba(23,52,91,0.03)' }}
+          >
+            <summary
+              className="px-4 py-2 cursor-pointer font-semibold select-none"
+              style={{ color: '#17345B' }}
+            >
+              User Context
+              {userContext.email && (
+                <span className="ml-2 font-normal" style={{ color: '#5E738C' }}>
+                  — {userContext.email}
+                </span>
+              )}
+            </summary>
+            <div className="px-4 pb-4 pt-2 space-y-2 font-mono" style={{ color: '#5E738C' }}>
+              <div>
+                <span className="font-sans font-semibold" style={{ color: '#17345B' }}>accountType: </span>
+                <span className="rounded px-1.5 py-0.5" style={{ background: '#17345B', color: '#fff' }}>
+                  {userContext.accountType || '(none — full access)'}
+                </span>
+              </div>
+              <div>
+                <span className="font-sans font-semibold" style={{ color: '#17345B' }}>assignedSchools </span>
+                <span className="text-slate-400">({userContext.assignedSchools.length})</span>
+                <span className="font-sans">: </span>
+                {userContext.assignedSchools.length === 0
+                  ? <span className="text-slate-400">—</span>
+                  : userContext.assignedSchools.map((s) => (
+                      <span
+                        key={s}
+                        className="inline-block rounded mr-1 mt-1 px-2 py-0.5"
+                        style={{ background: '#255694', color: '#fff' }}
+                      >
+                        {s}
+                      </span>
+                    ))
+                }
+              </div>
+              <div>
+                <span className="font-sans font-semibold" style={{ color: '#17345B' }}>assignedRegions </span>
+                <span className="text-slate-400">({userContext.assignedRegions.length})</span>
+                <span className="font-sans">: </span>
+                {userContext.assignedRegions.length === 0
+                  ? <span className="text-slate-400">—</span>
+                  : userContext.assignedRegions.map((r) => (
+                      <span
+                        key={r}
+                        className="inline-block rounded mr-1 mt-1 px-2 py-0.5"
+                        style={{ background: '#BCD631', color: '#17345B' }}
+                      >
+                        {r}
+                      </span>
+                    ))
+                }
+              </div>
+              <div>
+                <span className="font-sans font-semibold" style={{ color: '#17345B' }}>visibleSchools </span>
+                <span className="text-slate-400">({visibleSchools.length} of {schools.length})</span>
+              </div>
+              <div className="font-sans pt-1">
+                <a
+                  href="/admin/debug"
+                  className="underline underline-offset-2 text-xs"
+                  style={{ color: '#5E738C' }}
+                >
+                  → Full debug page
+                </a>
+              </div>
+            </div>
+          </details>
+        )}
 
         {/* ── 1. Administration (required) ── */}
         <div className="bg-white border border-[rgba(23,52,91,0.10)] rounded-lg p-5 space-y-4">
@@ -701,10 +790,8 @@ export default function DashboardClient({ filterOptions, schools, userContext }:
         </div>
       )}
 
-      {/* Status */}
-      {loading && (
-        <div className="py-12 text-center text-slate-500 text-sm">Loading results…</div>
-      )}
+      {/* Loading overlay */}
+      {loading && <LoadingOverlay message="Loading results…" />}
       {!loading && error && (
         <div className="py-6 text-center text-red-600 text-sm">Error: {error}</div>
       )}
