@@ -78,12 +78,14 @@ export interface AssessmentSchoolResult {
   cityFullCreditPct: number;     // decimal 0–1
   cityPartialCreditPct: number;  // decimal 0–1
   cityBlanksCount: number;
-  // Region comparison (singleLineText → parseFloat; pct fields stored as 0–100)
+  // Region comparison
+  // RegionFull_Credit_All, Region_Partial_Credit → singleLineText, stored 0–100
+  // Region_Blanks_Count, Region_Blanks_Percent   → multipleLookupValues
   regionN: number;
-  regionFullCreditPct: number;    // 0–100
-  regionPartialCreditPct: number; // 0–100
-  regionBlanksCount: number;
-  regionBlankPct: number;         // 0–100
+  regionFullCreditPct: number;    // 0–100 (singleLineText)
+  regionPartialCreditPct: number; // 0–100 (singleLineText)
+  regionBlanksCount: number;      // multipleLookupValues[0]
+  regionBlankPct: number;         // multipleLookupValues[0] — assumed 0–100
   // Network comparison (singleLineText → parseFloat)
   networkN: number;
   networkFullCreditPct: number;    // decimal 0–1
