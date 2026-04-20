@@ -24,8 +24,9 @@ export const ASSESSMENT_BANK_FIELDS = {
   reportAtId: 'Assessment_Bank_Report_AT_ID',
   gradeLevel: 'Grade Level',
   itemCount: 'Item_Count',
-  /** multipleRecordLinks — empty array means no results exist for this bank → exclude from DDL */
-  resultsLink: 'Assessment_Results_School_Item copy',
+  /** multipleRecordLinks → Assessment_Results_School_Item (fldof4j3fBoR3YFXL).
+   *  Empty/absent = no results for this bank → exclude from DDL. */
+  resultsLink: 'Assessment_Results_School_Item_Links',
 } as const;
 
 // ─── Field name constants: Assessment_Results_School_Item ─────────────────────
@@ -110,7 +111,7 @@ export async function fetchAssessmentBanks(): Promise<AssessmentBank[]> {
   return records
     .filter((r) => {
       const f = r.fields as Record<string, unknown>;
-      // Exclude banks with no linked result records (empty array or absent = no data)
+      // Exclude banks where the results link is absent or empty (no data yet).
       const links = f[ASSESSMENT_BANK_FIELDS.resultsLink];
       return Array.isArray(links) && links.length > 0;
     })
