@@ -18,7 +18,10 @@ import type { AssessmentComparisonGroup } from '@/lib/assessmentTypes';
 export const dynamic = 'force-dynamic';
 
 interface AssessmentResultsRequestBody {
-  schoolExtract: string;
+  /** Single school (backwards compat) */
+  schoolExtract?: string;
+  /** Multiple schools — preferred; results are tagged by schoolName and sorted by school then itemOrder */
+  schoolExtracts?: string[];
   bankReportAtId: string;
   comparisonGroups: AssessmentComparisonGroup[];
 }
@@ -32,11 +35,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { schoolExtract, bankReportAtId, comparisonGroups = [] } = body;
+  const { schoolExtract, schoolExtracts, bankReportAtId, comparisonGroups = [] } = body;
 
-  if (!schoolExtract) {
+  // Resolve the list of schools from either field
+  const schools: string[] = schoolExtracts && schoolExtracts.length > 0
+    ? schoolExtracts
+    : schoolExtract
+      ? [schoolExtract]
+      : [];
+
+  if (schools.length === 0) {
     return NextResponse.json(
-      { error: 'Request body must include `schoolExtract`' },
+      { error: 'Request body must include `schoolExtracts` (array) or `schoolExtract` (string)' },
       { status: 400 }
     );
   }
@@ -57,10 +67,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const [rawResults, itemDetailMap] = await Promise.all([
-      fetchAssessmentResults(schoolExtract, bankReportAtId),
+    const [schoolResultArrays, itemDetailMap] = await Promise.all([
+      Promise.all(schools.map((s) => fetchAssessmentResults(s, bankReportAtId))),
       fetchAssessmentItemDetails(bankReportAtId),
     ]);
+    // Flatten multi-school results; each set is already sorted by itemOrder
+    const rawResults = schoolResultArrays.flat();
     const rows = buildAssessmentRows(rawResults, comparisonGroups, itemDetailMap);
     return NextResponse.json(rows);
   } catch (err) {

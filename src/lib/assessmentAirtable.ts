@@ -9,6 +9,7 @@
  */
 import { fetchAllRecords } from './airtable';
 import type { AssessmentBank, AssessmentSchoolResult, AssessmentItemDetail } from './assessmentTypes';
+import type { SchoolInfo } from './types';
 
 // ─── Table IDs ────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,8 @@ export const ASSESSMENT_BANK_FIELDS = {
   reportAtId: 'Assessment_Bank_Report_AT_ID',
   gradeLevel: 'Grade Level',
   itemCount: 'Item_Count',
+  /** multipleRecordLinks — empty array means no results exist for this bank → exclude from DDL */
+  resultsLink: 'Assessment_Results_School_Item copy',
 } as const;
 
 // ─── Field name constants: Assessment_Results_School_Item ─────────────────────
@@ -45,8 +48,10 @@ export const ASSESSMENT_RESULT_FIELDS = {
   partialCredit: 'Partial_Credit',
   partialCreditCount: 'Partial_Credit_Count',
   blanks: 'Blanks',
-  // City comparison (multipleLookupValues — take [0])
+  // School's own city / region (for SchoolInfo construction) and comparison label
   cityTxt: 'City',
+  schoolRegion: 'Region_Txt',
+  // City comparison (multipleLookupValues — take [0])
   cityItemResponses: 'City_Item_Responses',
   cityFullCreditPct: 'City_Full_Credit_Percent',
   cityPartialCreditPct: 'City_Partial_Credit_Percent',
@@ -103,6 +108,12 @@ export async function fetchAssessmentBanks(): Promise<AssessmentBank[]> {
   });
 
   return records
+    .filter((r) => {
+      const f = r.fields as Record<string, unknown>;
+      // Exclude banks with no linked result records (empty array or absent = no data)
+      const links = f[ASSESSMENT_BANK_FIELDS.resultsLink];
+      return Array.isArray(links) && links.length > 0;
+    })
     .map((r) => {
       const f = r.fields as Record<string, unknown>;
       return {
@@ -197,9 +208,13 @@ export async function fetchAssessmentResults(
  */
 export async function fetchAssessmentSchools(
   bankReportAtId?: string
-): Promise<string[]> {
+): Promise<SchoolInfo[]> {
   const opts: Parameters<typeof fetchAllRecords>[1] = {
-    fields: [ASSESSMENT_RESULT_FIELDS.schoolExtract],
+    fields: [
+      ASSESSMENT_RESULT_FIELDS.schoolExtract,
+      ASSESSMENT_RESULT_FIELDS.cityTxt,
+      ASSESSMENT_RESULT_FIELDS.schoolRegion,
+    ],
   };
   if (bankReportAtId) {
     const esc = bankReportAtId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -208,12 +223,21 @@ export async function fetchAssessmentSchools(
 
   const records = await fetchAllRecords(TABLE_ASSESSMENT_SCHOOL_ITEM, opts);
 
-  const seen = new Set<string>();
+  // Deduplicate by school name; take first record's city/region for each school
+  const seen = new Map<string, SchoolInfo>();
   for (const r of records) {
-    const name = strField((r.fields as Record<string, unknown>)[ASSESSMENT_RESULT_FIELDS.schoolExtract]);
-    if (name) seen.add(name);
+    const f = r.fields as Record<string, unknown>;
+    const name = strField(f[ASSESSMENT_RESULT_FIELDS.schoolExtract]);
+    if (!name || seen.has(name)) continue;
+    seen.set(name, {
+      id: r.id,
+      name,
+      fullName: name,
+      city: strField(f[ASSESSMENT_RESULT_FIELDS.cityTxt]),
+      region: lookupStr(f[ASSESSMENT_RESULT_FIELDS.schoolRegion]),
+    });
   }
-  return Array.from(seen).sort();
+  return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ─── Field name constants: Assessment_Items ───────────────────────────────────

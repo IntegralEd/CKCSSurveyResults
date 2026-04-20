@@ -15,7 +15,7 @@
 import { fetchAssessmentBanks, fetchAssessmentSchools } from './assessmentAirtable';
 import { fetchUserPermissions } from './airtable';
 import type { AssessmentBank } from './assessmentTypes';
-import type { UserContext } from './types';
+import type { UserContext, SchoolInfo } from './types';
 
 function parseList(v: string | string[] | undefined): string[] {
   if (!v) return [];
@@ -30,7 +30,7 @@ function rawParam(searchParams: Record<string, string | string[] | undefined>, k
 
 export interface AssessmentDashboardProps {
   banks: AssessmentBank[];
-  schools: string[];
+  schools: SchoolInfo[];
   defaultBankReportAtId: string;   // empty string = no pre-selection
   userContext: UserContext;
 }
