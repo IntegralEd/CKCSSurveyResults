@@ -57,10 +57,12 @@ export const ASSESSMENT_RESULT_FIELDS = {
   cityFullCreditPct: 'City_Full_Credit_Percent',
   cityPartialCreditPct: 'City_Partial_Credit_Percent',
   cityBlanksCount: 'City_Blanks_Count',
-  // Region comparison (singleLineText → parseFloat)
+  // Region comparison (singleLineText → parseFloat; pct fields stored as 0–100)
   regionN: 'Region_N',
   regionFullCreditPct: 'RegionFull_Credit_All',
   regionPartialCreditPct: 'Region_Partial_Credit',
+  regionBlanksCount: 'Region_Blanks_Count',
+  regionBlankPct: 'Region_Blanks_Percent',
   // Network comparison (singleLineText with spaces → parseFloat)
   networkN: 'Network N',
   networkFullCreditPct: 'Network Full Credit',
@@ -190,6 +192,8 @@ export async function fetchAssessmentResults(
       regionN:              strNum(f[ASSESSMENT_RESULT_FIELDS.regionN]),
       regionFullCreditPct:  strNum(f[ASSESSMENT_RESULT_FIELDS.regionFullCreditPct]),
       regionPartialCreditPct: strNum(f[ASSESSMENT_RESULT_FIELDS.regionPartialCreditPct]),
+      regionBlanksCount:    strNum(f[ASSESSMENT_RESULT_FIELDS.regionBlanksCount]),
+      regionBlankPct:       strNum(f[ASSESSMENT_RESULT_FIELDS.regionBlankPct]),
       networkN:             strNum(f[ASSESSMENT_RESULT_FIELDS.networkN]),
       networkFullCreditPct: strNum(f[ASSESSMENT_RESULT_FIELDS.networkFullCreditPct]),
       networkPartialCreditPct: strNum(f[ASSESSMENT_RESULT_FIELDS.networkPartialCreditPct]),

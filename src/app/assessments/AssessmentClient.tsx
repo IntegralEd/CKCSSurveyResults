@@ -78,7 +78,7 @@ function assessmentTableColumns(groups: AssessmentComparisonGroup[]) {
       { key: 'regionFullCreditPct',    label: 'Full %',      width: '80px', group: 'Region' },
       { key: 'regionPartialCreditPct', label: 'Partial %',   width: '80px', group: 'Region' },
       { key: 'regionNoCreditPct',      label: 'No Credit %', width: '90px', group: 'Region' },
-      // Note: region has no blank data — No Credit absorbs blanks
+      { key: 'regionBlankPct',         label: 'Blank %',     width: '80px', group: 'Region' },
     );
   }
   if (groups.includes('network')) {
@@ -120,6 +120,7 @@ function assessmentCsvColumns(groups: AssessmentComparisonGroup[]): CsvColumn[] 
       { key: 'regionFullCreditPct',    label: 'Region Full %' },
       { key: 'regionPartialCreditPct', label: 'Region Partial %' },
       { key: 'regionNoCreditPct',      label: 'Region No Credit %' },
+      { key: 'regionBlankPct',         label: 'Region Blank %' },
     );
   }
   if (groups.includes('network')) {

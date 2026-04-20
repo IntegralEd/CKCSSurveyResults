@@ -92,23 +92,24 @@ export function buildAssessmentRows(
       }
 
       // ── Region level ────────────────────────────────────────────────────────
-      // No blank count available for region; No Credit absorbs blanks.
       let regionN: number | null = null;
       let regionFullCreditPct: number | null = null;
       let regionPartialCreditPct: number | null = null;
       let regionNoCreditPct: number | null = null;
+      let regionBlankPct: number | null = null;
 
       if (includeRegion && r.regionN > 0) {
         regionN               = r.regionN;
         // Region pct fields are stored as 0–100 (not 0–1 decimals) — use round1, not pct()
         regionFullCreditPct   = round1(r.regionFullCreditPct);
         regionPartialCreditPct = round1(r.regionPartialCreditPct);
+        regionBlankPct        = round1(r.regionBlankPct);
         regionNoCreditPct     = clamp0(
-          round1(100 - regionFullCreditPct - regionPartialCreditPct)
+          round1(100 - regionFullCreditPct - regionPartialCreditPct - regionBlankPct)
         );
       } else if (includeRegion) {
         regionN = 0;
-        regionFullCreditPct = regionPartialCreditPct = regionNoCreditPct = 0;
+        regionFullCreditPct = regionPartialCreditPct = regionNoCreditPct = regionBlankPct = 0;
       }
 
       // ── Network level ───────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ export function buildAssessmentRows(
         regionFullCreditPct,
         regionPartialCreditPct,
         regionNoCreditPct,
+        regionBlankPct,
         networkN,
         networkFullCreditPct,
         networkPartialCreditPct,

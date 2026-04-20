@@ -228,7 +228,7 @@ export default function AssessmentChartPanel({ rows, groups, school, assessmentI
                   fullCreditPct={row.regionFullCreditPct}
                   partialCreditPct={row.regionPartialCreditPct}
                   noCreditPct={row.regionNoCreditPct}
-                  blankPct={null}
+                  blankPct={row.regionBlankPct}
                 />
               )}
               {groups.includes('network') && (

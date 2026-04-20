@@ -78,10 +78,12 @@ export interface AssessmentSchoolResult {
   cityFullCreditPct: number;     // decimal 0–1
   cityPartialCreditPct: number;  // decimal 0–1
   cityBlanksCount: number;
-  // Region comparison (singleLineText → parseFloat)
+  // Region comparison (singleLineText → parseFloat; pct fields stored as 0–100)
   regionN: number;
-  regionFullCreditPct: number;    // decimal 0–1
-  regionPartialCreditPct: number; // decimal 0–1
+  regionFullCreditPct: number;    // 0–100
+  regionPartialCreditPct: number; // 0–100
+  regionBlanksCount: number;
+  regionBlankPct: number;         // 0–100
   // Network comparison (singleLineText → parseFloat)
   networkN: number;
   networkFullCreditPct: number;    // decimal 0–1
@@ -127,11 +129,11 @@ export interface AssessmentRow {
   cityNoCreditPct: number | null;   // computed: 100 - full - partial - blank
   cityBlankPct: number | null;      // computed: City_Blanks_Count / City_Item_Responses × 100
   // Region comparison — null when not requested
-  // Note: region blank data not available; noCreditPct absorbs blanks (100 - full - partial)
   regionN: number | null;
   regionFullCreditPct: number | null;
   regionPartialCreditPct: number | null;
-  regionNoCreditPct: number | null;  // computed: 100 - full - partial
+  regionNoCreditPct: number | null;  // computed: 100 - full - partial - blank
+  regionBlankPct: number | null;
   // Network comparison — null when not requested
   networkN: number | null;
   networkFullCreditPct: number | null;
