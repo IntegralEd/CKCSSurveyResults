@@ -112,6 +112,8 @@ export interface AssessmentRow {
   domains: string[];
   assessmentId: string;
   schoolName: string;
+  /** Rich item detail from Assessment_Items — present when fetched, absent if not loaded */
+  detail?: AssessmentItemDetail;
   // School-level (0–100 pct, 1 decimal)
   schoolN: number;
   schoolFullCreditPct: number;
@@ -136,6 +138,41 @@ export interface AssessmentRow {
   networkPartialCreditPct: number | null;
   networkNoCreditPct: number | null;
   networkBlankPct: number | null;
+}
+
+// ─── Assessment_Items detail ──────────────────────────────────────────────────
+
+/**
+ * Rich item detail fetched from Assessment_Items (tblqIgPFR3mCHjQRo).
+ * Keyed by itemOrder; merged onto AssessmentRow.detail after the results fetch.
+ *
+ * Airtable field → property mapping:
+ *   Item_Order             → itemOrder         (number — join key)
+ *   Item_Label             → itemLabel         (singleLineText — short code like "Q1")
+ *   Item_Display_Label     → displayLabel      (multilineText — longer display name)
+ *   Prompt                 → prompt            (richText — full item text, may contain markdown)
+ *   Item_Type              → itemType          (singleSelect)
+ *   Correct_Response_Text  → correctResponseText (singleLineText — open-response answer)
+ *   Correct_MC_Response    → correctMcLetters  (multipleSelects — ["A","C"] etc.)
+ *   Correct_MC_Flat        → correctMcFlat     (multilineText — same as above, flat string)
+ *   Option_A … Option_F    → options           (map of letter → text, omit empty)
+ *   Points_Possible        → pointsPossible    (number)
+ *   Standards_Code         → standardsCode     (singleLineText)
+ *   Rubric_Reference       → rubricReference   (richText — partial-credit rubric)
+ */
+export interface AssessmentItemDetail {
+  itemOrder: number;
+  itemLabel: string;
+  displayLabel: string;
+  prompt: string;
+  itemType: string;
+  correctResponseText: string;
+  correctMcLetters: string[];           // e.g. ["A", "C"]
+  correctMcFlat: string;
+  options: Record<string, string>;      // { A: "option text", B: "...", ... }
+  pointsPossible: number | null;
+  standardsCode: string;
+  rubricReference: string;
 }
 
 // ─── Comparison group ─────────────────────────────────────────────────────────

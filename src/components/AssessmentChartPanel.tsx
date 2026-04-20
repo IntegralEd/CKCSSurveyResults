@@ -14,6 +14,7 @@
  */
 
 import type { AssessmentRow, AssessmentComparisonGroup } from '@/lib/assessmentTypes';
+import { ItemInfoButton } from '@/components/AssessmentItemModal';
 
 // ─── Segment config ───────────────────────────────────────────────────────────
 
@@ -151,9 +152,10 @@ interface Props {
   groups: AssessmentComparisonGroup[];
   school: { name: string; city?: string; region?: string };
   assessmentId: string;
+  onItemInfo?: (row: AssessmentRow) => void;
 }
 
-export default function AssessmentChartPanel({ rows, groups, school, assessmentId }: Props) {
+export default function AssessmentChartPanel({ rows, groups, school, assessmentId, onItemInfo }: Props) {
   if (rows.length === 0) return null;
 
   return (
@@ -182,8 +184,14 @@ export default function AssessmentChartPanel({ rows, groups, school, assessmentI
           >
             {/* Item header */}
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="text-xs text-slate-400 font-mono mr-2">#{row.itemOrder}</span>
+              <div className="flex items-start gap-1.5 min-w-0">
+                <span className="text-xs text-slate-400 font-mono shrink-0 mt-px">#{row.itemOrder}</span>
+                {onItemInfo && row.detail && (
+                  <ItemInfoButton
+                    onClick={() => onItemInfo(row)}
+                    label={`View detail for item ${row.itemOrder}`}
+                  />
+                )}
                 <span className="text-sm font-medium text-slate-800">{row.itemPrompt}</span>
               </div>
               {row.domains.length > 0 && (

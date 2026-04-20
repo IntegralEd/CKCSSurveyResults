@@ -11,7 +11,7 @@
  * Returns: AssessmentRow[] sorted by itemOrder ascending
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchAssessmentResults } from '@/lib/assessmentAirtable';
+import { fetchAssessmentResults, fetchAssessmentItemDetails } from '@/lib/assessmentAirtable';
 import { buildAssessmentRows } from '@/lib/assessmentAggregation';
 import type { AssessmentComparisonGroup } from '@/lib/assessmentTypes';
 
@@ -57,8 +57,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const rawResults = await fetchAssessmentResults(schoolExtract, bankReportAtId);
-    const rows = buildAssessmentRows(rawResults, comparisonGroups);
+    const [rawResults, itemDetailMap] = await Promise.all([
+      fetchAssessmentResults(schoolExtract, bankReportAtId),
+      fetchAssessmentItemDetails(bankReportAtId),
+    ]);
+    const rows = buildAssessmentRows(rawResults, comparisonGroups, itemDetailMap);
     return NextResponse.json(rows);
   } catch (err) {
     const detail = err instanceof Error

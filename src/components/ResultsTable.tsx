@@ -25,6 +25,12 @@ interface Props {
   defaultSortKey?: string;
   /** When true, hide sort indicators, ignore header clicks, render rows in given order */
   disableSort?: boolean;
+  /**
+   * Optional escape hatch for custom cell rendering.
+   * Called for every cell; return a React node to override the default display,
+   * or undefined/null to use the default number/string formatting.
+   */
+  renderCell?: (colKey: string, val: unknown, row: Record<string, unknown>) => React.ReactNode | undefined | null;
 }
 
 type SortDir = 'asc' | 'desc';
@@ -38,7 +44,7 @@ type SortDir = 'asc' | 'desc';
  *     viewport while the user scrolls the page vertically
  *   - Section header rows (row._sectionHeader = true) rendered as full-width dividers
  */
-export default function ResultsTable({ columns, rows, defaultSortKey, disableSort = false }: Props) {
+export default function ResultsTable({ columns, rows, defaultSortKey, disableSort = false, renderCell }: Props) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSortKey ?? null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -143,8 +149,15 @@ export default function ResultsTable({ columns, rows, defaultSortKey, disableSor
                     const val = row[col.key];
                     const isNum = typeof val === 'number';
                     const isPct = col.key.toLowerCase().includes('pct');
-                    const display =
-                      val == null ? '—'
+                    const isWide = col.key === 'prompt' || col.key === 'commentText' || col.key === 'itemPrompt';
+                    const isTopN = isPct;
+                    const isOrder = col.key === 'itemOrder';
+
+                    // Custom cell renderer — use if provided and returns non-null
+                    const custom = renderCell?.(col.key, val, row);
+
+                    const display = custom != null ? null
+                      : val == null ? '—'
                       : isPct
                         ? `${(val as number).toFixed(1)}%`
                       : isNum && Number.isInteger(val as number)
@@ -153,24 +166,20 @@ export default function ResultsTable({ columns, rows, defaultSortKey, disableSor
                         ? (val as number).toFixed(1)
                       : String(val);
 
-                    const isWide = col.key === 'prompt' || col.key === 'commentText';
-                    const isTopN = isPct;
-                    const isOrder = col.key === 'itemOrder';
-
                     return (
                       <td
                         key={col.key}
                         style={{ width: col.width, minWidth: col.minWidth ?? col.width }}
                         className={[
                           'px-3 py-2 border-b border-slate-100 align-top',
-                          isNum && !isWide ? 'text-right tabular-nums' : 'text-left',
+                          isNum && !isWide && custom == null ? 'text-right tabular-nums' : 'text-left',
                           isWide ? 'whitespace-normal' : 'whitespace-nowrap',
                           isTopN ? 'bg-[#17345B]/[0.04] font-medium text-[#17345B]' : '',
                           isOrder ? 'text-center text-slate-400 text-xs' : '',
                           col.groupStart ? 'border-l-[3px] border-l-slate-400' : '',
                         ].join(' ')}
                       >
-                        {display}
+                        {custom ?? display}
                       </td>
                     );
                   })}

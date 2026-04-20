@@ -16,7 +16,7 @@
  * Region comparison does not carry a blank count so No Credit absorbs blanks:
  *   regionNoCreditPct = 100 - regionFullCreditPct - regionPartialCreditPct
  */
-import type { AssessmentSchoolResult, AssessmentRow, AssessmentComparisonGroup } from './assessmentTypes';
+import type { AssessmentSchoolResult, AssessmentRow, AssessmentComparisonGroup, AssessmentItemDetail } from './assessmentTypes';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,13 +42,16 @@ function clamp0(x: number): number {
  * Filters out records missing itemOrder or itemPrompt.
  * Sorts by itemOrder ascending.
  * Applies the comparisonGroups mask — non-requested groups are set to null.
+ * Merges rich item detail when itemDetailMap is provided.
  *
  * @param results          Records from fetchAssessmentResults()
  * @param comparisonGroups Which comparison columns to populate
+ * @param itemDetailMap    Optional Map<itemOrder, AssessmentItemDetail> from fetchAssessmentItemDetails()
  */
 export function buildAssessmentRows(
   results: AssessmentSchoolResult[],
-  comparisonGroups: AssessmentComparisonGroup[]
+  comparisonGroups: AssessmentComparisonGroup[],
+  itemDetailMap?: Map<number, AssessmentItemDetail>
 ): AssessmentRow[] {
   const includeCity    = comparisonGroups.includes('city');
   const includeRegion  = comparisonGroups.includes('region');
@@ -134,6 +137,7 @@ export function buildAssessmentRows(
         domains: r.domains,
         assessmentId: r.assessmentId,
         schoolName: r.schoolExtract,
+        detail: itemDetailMap?.get(r.itemOrder),
         schoolN: r.itemResponses,
         schoolFullCreditPct:    schoolFullPct,
         schoolPartialCreditPct: schoolPartialPct,

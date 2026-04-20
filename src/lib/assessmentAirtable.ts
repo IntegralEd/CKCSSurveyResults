@@ -8,12 +8,13 @@
  * Table IDs confirmed from schema registry.
  */
 import { fetchAllRecords } from './airtable';
-import type { AssessmentBank, AssessmentSchoolResult } from './assessmentTypes';
+import type { AssessmentBank, AssessmentSchoolResult, AssessmentItemDetail } from './assessmentTypes';
 
 // ─── Table IDs ────────────────────────────────────────────────────────────────
 
 export const TABLE_ASSESSMENT_SCHOOL_ITEM = 'tblD7Kjxmno3JuhAk';
 export const TABLE_ASSESSMENT_BANKS = 'tblwgM7tZ0e1sEpfX';
+export const TABLE_ASSESSMENT_ITEMS = 'tblqIgPFR3mCHjQRo';
 
 // ─── Field name constants: Assessment_Banks ───────────────────────────────────
 
@@ -213,4 +214,101 @@ export async function fetchAssessmentSchools(
     if (name) seen.add(name);
   }
   return Array.from(seen).sort();
+}
+
+// ─── Field name constants: Assessment_Items ───────────────────────────────────
+
+export const ASSESSMENT_ITEM_FIELDS = {
+  itemOrder:           'Item_Order',
+  itemLabel:           'Item_Label',
+  displayLabel:        'Item_Display_Label',
+  prompt:              'Prompt',
+  itemType:            'Item_Type',
+  correctResponseText: 'Correct_Response_Text',
+  correctMcResponse:   'Correct_MC_Response',
+  correctMcFlat:       'Correct_MC_Flat',
+  optionA:             'Option_A',
+  optionB:             'Option_B',
+  optionC:             'Option_C',
+  optionD:             'Option_D',
+  optionE:             'Option_E',
+  optionF:             'Option_F',
+  pointsPossible:      'Points_Possible',
+  standardsCode:       'Standards_Code',
+  rubricReference:     'Rubric_Reference',
+  bankReportAtId:      'Assessment_Bank_Report_AT_ID',
+} as const;
+
+// ─── Assessment_Items fetch ───────────────────────────────────────────────────
+
+/**
+ * Fetch all Assessment_Items for a given bank, keyed by Item_Order.
+ *
+ * Uses Assessment_Bank_Report_AT_ID formula field on Assessment_Items
+ * for a direct equality filter (formula field, not a lookup array).
+ *
+ * @param bankReportAtId  Assessment_Bank_Report_AT_ID value (recXXX)
+ * @returns Map<itemOrder, AssessmentItemDetail>
+ */
+export async function fetchAssessmentItemDetails(
+  bankReportAtId: string
+): Promise<Map<number, AssessmentItemDetail>> {
+  const esc = bankReportAtId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const records = await fetchAllRecords(TABLE_ASSESSMENT_ITEMS, {
+    filterByFormula: `{Assessment_Bank_Report_AT_ID} = "${esc}"`,
+    fields: Object.values(ASSESSMENT_ITEM_FIELDS),
+    sort: [{ field: ASSESSMENT_ITEM_FIELDS.itemOrder, direction: 'asc' }],
+  });
+
+  const map = new Map<number, AssessmentItemDetail>();
+
+  for (const r of records) {
+    const f = r.fields as Record<string, unknown>;
+
+    const itemOrder = typeof f[ASSESSMENT_ITEM_FIELDS.itemOrder] === 'number'
+      ? (f[ASSESSMENT_ITEM_FIELDS.itemOrder] as number)
+      : parseInt(String(f[ASSESSMENT_ITEM_FIELDS.itemOrder] ?? '0'), 10) || 0;
+
+    if (!itemOrder) continue;
+
+    // Correct_MC_Response is a multipleSelects field → array of letter strings
+    const rawMc = f[ASSESSMENT_ITEM_FIELDS.correctMcResponse];
+    const correctMcLetters = Array.isArray(rawMc) ? rawMc.map(String) : [];
+
+    // Options — collect only non-empty entries
+    const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+    const optionKeys = [
+      ASSESSMENT_ITEM_FIELDS.optionA,
+      ASSESSMENT_ITEM_FIELDS.optionB,
+      ASSESSMENT_ITEM_FIELDS.optionC,
+      ASSESSMENT_ITEM_FIELDS.optionD,
+      ASSESSMENT_ITEM_FIELDS.optionE,
+      ASSESSMENT_ITEM_FIELDS.optionF,
+    ] as const;
+    const options: Record<string, string> = {};
+    optionLetters.forEach((letter, i) => {
+      const text = strField(f[optionKeys[i]]);
+      if (text) options[letter] = text;
+    });
+
+    const pointsRaw = f[ASSESSMENT_ITEM_FIELDS.pointsPossible];
+    const pointsPossible = typeof pointsRaw === 'number' ? pointsRaw : null;
+
+    map.set(itemOrder, {
+      itemOrder,
+      itemLabel:           strField(f[ASSESSMENT_ITEM_FIELDS.itemLabel]),
+      displayLabel:        strField(f[ASSESSMENT_ITEM_FIELDS.displayLabel]),
+      prompt:              strField(f[ASSESSMENT_ITEM_FIELDS.prompt]),
+      itemType:            strField(f[ASSESSMENT_ITEM_FIELDS.itemType]),
+      correctResponseText: strField(f[ASSESSMENT_ITEM_FIELDS.correctResponseText]),
+      correctMcLetters,
+      correctMcFlat:       strField(f[ASSESSMENT_ITEM_FIELDS.correctMcFlat]),
+      options,
+      pointsPossible,
+      standardsCode:       strField(f[ASSESSMENT_ITEM_FIELDS.standardsCode]),
+      rubricReference:     strField(f[ASSESSMENT_ITEM_FIELDS.rubricReference]),
+    });
+  }
+
+  return map;
 }

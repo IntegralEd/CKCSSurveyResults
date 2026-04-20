@@ -16,6 +16,7 @@
 import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import AssessmentChartPanel from '@/components/AssessmentChartPanel';
+import AssessmentItemModal, { ItemInfoButton } from '@/components/AssessmentItemModal';
 import ResultsTable from '@/components/ResultsTable';
 import type { AssessmentBank, AssessmentRow, AssessmentComparisonGroup } from '@/lib/assessmentTypes';
 import type { UserContext } from '@/lib/types';
@@ -113,6 +114,8 @@ export default function AssessmentClient({
   const [loadedBankId, setLoadedBankId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ── Item detail modal ───────────────────────────────────────────────────────
+  const [modalRow, setModalRow] = useState<AssessmentRow | null>(null);
 
   // ── Permission-derived values ────────────────────────────────────────────────
   const acct = userContext?.accountType ?? '';
@@ -334,6 +337,7 @@ export default function AssessmentClient({
               groups={comparisonGroups}
               school={{ name: loadedSchool }}
               assessmentId={loadedBank?.assessmentId ?? loadedBankId}
+              onItemInfo={setModalRow}
             />
           )}
 
@@ -341,9 +345,35 @@ export default function AssessmentClient({
             <ResultsTable
               columns={assessmentTableColumns(comparisonGroups)}
               rows={tableRows}
+              renderCell={(colKey, val, row) => {
+                if (colKey !== 'itemOrder') return undefined;
+                const order = val as number;
+                const srcRow = rows.find((r) => r.itemOrder === order);
+                return (
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <span className="text-slate-400 tabular-nums">{order}</span>
+                    {srcRow?.detail && (
+                      <ItemInfoButton
+                        onClick={() => setModalRow(srcRow)}
+                        label={`View detail for item ${order}`}
+                      />
+                    )}
+                  </span>
+                );
+              }}
             />
           )}
         </div>
+      )}
+
+      {/* Item detail modal */}
+      {modalRow?.detail && (
+        <AssessmentItemModal
+          item={modalRow.detail}
+          itemOrder={modalRow.itemOrder}
+          assessmentId={modalRow.assessmentId}
+          onClose={() => setModalRow(null)}
+        />
       )}
 
       {phase === 'results' && rows && rows.length === 0 && (
