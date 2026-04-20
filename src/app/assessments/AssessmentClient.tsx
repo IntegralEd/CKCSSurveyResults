@@ -31,18 +31,19 @@ import type { UserContext, SchoolInfo } from '@/lib/types';
 
 const LoadingOverlay = dynamic(() => import('@/components/LoadingOverlay'), { ssr: false });
 
-// ─── File-name helper (mirrors DashboardClient.csvFilename) ───────────────────
+// ─── File-name helper ─────────────────────────────────────────────────────────
 
-function csvFilename(...parts: string[]): string {
-  const today = new Date();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const yy = String(today.getFullYear()).slice(-2);
-  const slug = parts
-    .filter(Boolean)
-    .map((p) => p.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''))
-    .join('_');
-  return `${slug}_${mm}${dd}${yy}.csv`;
+/** Returns "{assessmentId}_generated_{YYYYMMDD}_{HHMM}.csv" */
+function assessmentFilename(assessmentId: string): string {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const hh   = String(now.getHours()).padStart(2, '0');
+  const min  = String(now.getMinutes()).padStart(2, '0');
+  // Preserve case; replace spaces/special chars with underscores
+  const slug = assessmentId.replace(/[^A-Za-z0-9\-]+/g, '_').replace(/^_+|_+$/g, '');
+  return `${slug}_generated_${yyyy}${mm}${dd}_${hh}${min}.csv`;
 }
 
 // ─── Column definitions ───────────────────────────────────────────────────────
@@ -64,29 +65,73 @@ function assessmentTableColumns(groups: AssessmentComparisonGroup[]) {
 
   if (groups.includes('city')) {
     cols.push(
-      { key: 'cityN',              label: 'N',           width: '64px', group: 'City', groupStart: true },
-      { key: 'cityFullCreditPct',  label: 'Full %',      width: '80px', group: 'City' },
-      { key: 'cityPartialCreditPct', label: 'Partial %', width: '80px', group: 'City' },
-      { key: 'cityNoCreditPct',    label: 'No Credit %', width: '90px', group: 'City' },
+      { key: 'cityN',                label: 'N',           width: '64px', group: 'City', groupStart: true },
+      { key: 'cityFullCreditPct',    label: 'Full %',      width: '80px', group: 'City' },
+      { key: 'cityPartialCreditPct', label: 'Partial %',   width: '80px', group: 'City' },
+      { key: 'cityNoCreditPct',      label: 'No Credit %', width: '90px', group: 'City' },
+      { key: 'cityBlankPct',         label: 'Blank %',     width: '80px', group: 'City' },
     );
   }
   if (groups.includes('region')) {
     cols.push(
-      { key: 'regionN',              label: 'N',           width: '64px', group: 'Region', groupStart: true },
-      { key: 'regionFullCreditPct',  label: 'Full %',      width: '80px', group: 'Region' },
-      { key: 'regionPartialCreditPct', label: 'Partial %', width: '80px', group: 'Region' },
-      { key: 'regionNoCreditPct',    label: 'No Credit %', width: '90px', group: 'Region' },
+      { key: 'regionN',                label: 'N',           width: '64px', group: 'Region', groupStart: true },
+      { key: 'regionFullCreditPct',    label: 'Full %',      width: '80px', group: 'Region' },
+      { key: 'regionPartialCreditPct', label: 'Partial %',   width: '80px', group: 'Region' },
+      { key: 'regionNoCreditPct',      label: 'No Credit %', width: '90px', group: 'Region' },
+      // Note: region has no blank data — No Credit absorbs blanks
     );
   }
   if (groups.includes('network')) {
     cols.push(
-      { key: 'networkN',              label: 'N',           width: '64px', group: 'Network', groupStart: true },
-      { key: 'networkFullCreditPct',  label: 'Full %',      width: '80px', group: 'Network' },
-      { key: 'networkPartialCreditPct', label: 'Partial %', width: '80px', group: 'Network' },
-      { key: 'networkNoCreditPct',    label: 'No Credit %', width: '90px', group: 'Network' },
+      { key: 'networkN',                label: 'N',           width: '64px', group: 'Network', groupStart: true },
+      { key: 'networkFullCreditPct',    label: 'Full %',      width: '80px', group: 'Network' },
+      { key: 'networkPartialCreditPct', label: 'Partial %',   width: '80px', group: 'Network' },
+      { key: 'networkNoCreditPct',      label: 'No Credit %', width: '90px', group: 'Network' },
+      { key: 'networkBlankPct',         label: 'Blank %',     width: '80px', group: 'Network' },
     );
   }
   cols.push({ key: 'domains', label: 'Domain', width: '120px' });
+  return cols;
+}
+
+/** CSV-specific columns: group name prefixed on every label, School column first. */
+function assessmentCsvColumns(groups: AssessmentComparisonGroup[]): CsvColumn[] {
+  const cols: CsvColumn[] = [
+    { key: 'schoolName',             label: 'School' },
+    { key: 'itemPrompt',             label: 'Item' },
+    { key: 'schoolN',                label: 'School N' },
+    { key: 'schoolFullCreditPct',    label: 'School Full %' },
+    { key: 'schoolPartialCreditPct', label: 'School Partial %' },
+    { key: 'schoolNoCreditPct',      label: 'School No Credit %' },
+    { key: 'schoolBlankPct',         label: 'School Blank %' },
+  ];
+  if (groups.includes('city')) {
+    cols.push(
+      { key: 'cityN',                label: 'City N' },
+      { key: 'cityFullCreditPct',    label: 'City Full %' },
+      { key: 'cityPartialCreditPct', label: 'City Partial %' },
+      { key: 'cityNoCreditPct',      label: 'City No Credit %' },
+      { key: 'cityBlankPct',         label: 'City Blank %' },
+    );
+  }
+  if (groups.includes('region')) {
+    cols.push(
+      { key: 'regionN',                label: 'Region N' },
+      { key: 'regionFullCreditPct',    label: 'Region Full %' },
+      { key: 'regionPartialCreditPct', label: 'Region Partial %' },
+      { key: 'regionNoCreditPct',      label: 'Region No Credit %' },
+    );
+  }
+  if (groups.includes('network')) {
+    cols.push(
+      { key: 'networkN',                label: 'Network N' },
+      { key: 'networkFullCreditPct',    label: 'Network Full %' },
+      { key: 'networkPartialCreditPct', label: 'Network Partial %' },
+      { key: 'networkNoCreditPct',      label: 'Network No Credit %' },
+      { key: 'networkBlankPct',         label: 'Network Blank %' },
+    );
+  }
+  cols.push({ key: 'domains', label: 'Domain' });
   return cols;
 }
 
@@ -262,20 +307,13 @@ export default function AssessmentClient({
     return Array.from(map.entries()).map(([schoolName, schoolRows]) => ({ schoolName, schoolRows }));
   })();
 
-  // ── CSV columns (strip styling props, keep key+label) ────────────────────────
-  const csvCols: CsvColumn[] = tableCols
-    .filter((c) => c.key !== 'itemOrder')   // '#' col has JSX in renderCell; skip
-    .map((c) => ({ key: c.key, label: c.label }));
-
+  // ── CSV columns and rows ─────────────────────────────────────────────────────
+  const csvCols = assessmentCsvColumns(comparisonGroups);
   const csvTableRows = tableRows.filter((r) => !r._sectionHeader);
 
   // ── PDF download ─────────────────────────────────────────────────────────────
   function handlePdfDownload() {
-    const schoolSlug = loadedSchools.length === 1
-      ? loadedSchools[0].name
-      : `${loadedSchools.length}_schools`;
-    const baseName = csvFilename('ckcs_asmt', schoolSlug, assessmentLabel, 'charts')
-      .replace(/\.csv$/, '');
+    const baseName = assessmentFilename(assessmentLabel).replace(/\.csv$/, '');
     const prev = document.title;
     document.title = baseName;
     document.body.classList.add('print-charts');
@@ -285,12 +323,7 @@ export default function AssessmentClient({
   }
 
   // ── CSV filename ─────────────────────────────────────────────────────────────
-  const csvFile = (() => {
-    const schoolSlug = loadedSchools.length === 1
-      ? loadedSchools[0].name
-      : `${loadedSchools.length}_schools`;
-    return csvFilename('ckcs_asmt', schoolSlug, assessmentLabel);
-  })();
+  const csvFile = assessmentFilename(assessmentLabel);
 
   const canSubmit = !!selectedBankAtId && selectedSchools.length > 0;
 
