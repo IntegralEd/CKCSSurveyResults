@@ -248,9 +248,10 @@ export async function fetchAssessmentSchools(
 // ─── Field name constants: Assessment_Items ───────────────────────────────────
 
 export const ASSESSMENT_ITEM_FIELDS = {
+  itemAtId:            'Item_AT_ID',           // multilineText — stores the record ID; join key
   itemOrder:           'Item_Order',
   itemLabel:           'Item_Label',
-  displayLabel:        'Item_Display_Label',
+  displayLabel:        'Item_Display_Label',   // primary field of Assessment_Items
   prompt:              'Prompt',
   itemType:            'Item_Type',
   correctResponseText: 'Correct_Response_Text',
@@ -264,38 +265,62 @@ export const ASSESSMENT_ITEM_FIELDS = {
   optionF:             'Option_F',
   pointsPossible:      'Points_Possible',
   standardsCode:       'Standards_Code',
-  rubricReference:          'Rubric_Reference',
-  bankReportAtId:           'Assessment_Bank_Report_AT_ID',
-  bankLink:                 'Assessment_Bank_Link',          // multipleRecordLinks
-  bankAnalysisAtId:         'Assessment_Bank_Analysis_AT_ID', // singleLineText — may store AT_ID
+  rubricReference:     'Rubric_Reference',
 } as const;
+
+/** Field on Assessment_Banks that lists all linked item AT_IDs (multipleLookupValues) */
+const BANK_ITEM_AT_IDS_FIELD = 'Assessment_Item_AT_ID (from Assessment_Items)';
 
 // ─── Assessment_Items fetch ───────────────────────────────────────────────────
 
 /**
  * Fetch all Assessment_Items for a given bank, keyed by Item_Order.
  *
- * Assessment_Bank_Report_AT_ID on Assessment_Items is a formula field whose
- * return format is uncertain (may be a plain string or wrapped). We use the
- * same FIND/ARRAYJOIN pattern as fetchAssessmentResults for robustness.
- * Also filters by Assessment_Bank_Link (multipleRecordLinks) as a fallback
- * in case the formula field doesn't match.
+ * Two-step approach:
+ *   1. Fetch the Assessment_Banks record by its ID to get the
+ *      "Assessment_Item_AT_ID (from Assessment_Items)" lookup array.
+ *   2. Filter Assessment_Items where {Item_AT_ID} matches any of those values.
  *
- * @param bankReportAtId  Assessment_Bank_Report_AT_ID value (recXXX — same as bank record ID)
+ * @param bankReportAtId  Assessment_Bank_Report_AT_ID value (= the bank's record ID)
  * @returns Map<itemOrder, AssessmentItemDetail>
  */
 export async function fetchAssessmentItemDetails(
   bankReportAtId: string
 ): Promise<Map<number, AssessmentItemDetail>> {
   const esc = bankReportAtId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  // Three-way OR: formula FIND, singleLineText equality, linked record equality
-  const filterByFormula = `OR(FIND("${esc}", ARRAYJOIN({Assessment_Bank_Report_AT_ID})) > 0, {Assessment_Bank_Analysis_AT_ID} = "${esc}", {Assessment_Bank_Link} = "${esc}")`;
+
+  // Step 1 — get item AT_IDs from the bank record
+  const bankRecords = await fetchAllRecords(TABLE_ASSESSMENT_BANKS, {
+    filterByFormula: `RECORD_ID() = "${esc}"`,
+    fields: [BANK_ITEM_AT_IDS_FIELD],
+  });
+
+  const bankRecord = bankRecords[0];
+  if (!bankRecord) {
+    console.log(`[fetchAssessmentItemDetails] no bank record for ${bankReportAtId}`);
+    return new Map();
+  }
+
+  const rawIds = bankRecord.fields[BANK_ITEM_AT_IDS_FIELD];
+  const itemAtIds: string[] = Array.isArray(rawIds)
+    ? rawIds.map(String).filter(Boolean)
+    : [];
+
+  console.log(`[fetchAssessmentItemDetails] bank=${bankReportAtId} → ${itemAtIds.length} item AT_IDs`);
+  if (itemAtIds.length === 0) return new Map();
+
+  // Step 2 — fetch Assessment_Items by Item_AT_ID
+  const orClauses = itemAtIds
+    .map((id) => `{Item_AT_ID} = "${id.replace(/"/g, '\\"')}"`)
+    .join(', ');
+  const filterByFormula = itemAtIds.length === 1 ? orClauses : `OR(${orClauses})`;
+
   const records = await fetchAllRecords(TABLE_ASSESSMENT_ITEMS, {
     filterByFormula,
     fields: Object.values(ASSESSMENT_ITEM_FIELDS),
     sort: [{ field: ASSESSMENT_ITEM_FIELDS.itemOrder, direction: 'asc' }],
   });
-  console.log(`[fetchAssessmentItemDetails] bankReportAtId=${bankReportAtId} → ${records.length} items`);
+  console.log(`[fetchAssessmentItemDetails] → ${records.length} items fetched`);
 
   const map = new Map<number, AssessmentItemDetail>();
 
