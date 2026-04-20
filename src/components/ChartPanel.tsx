@@ -9,9 +9,20 @@
  *   - 88px label column (right-aligned) + flex bar column
  *   - Percentage labels above each segment
  *   - All comparison group bars span the same full width
+ *
+ * ChartRow accepts a pre-built `segments` array so both survey (cumulative top-N)
+ * and assessment (direct pct) modes can share the same rendering code.
  */
 
 import type { ComparisonRow, ComparisonGroup } from '@/lib/types';
+
+// ─── Shared segment type ──────────────────────────────────────────────────────
+
+export interface ChartSegment {
+  pct: number;
+  color: string;
+  label: string;
+}
 
 // ─── Brand palette ────────────────────────────────────────────────────────────
 
@@ -93,7 +104,13 @@ interface ChartRowProps {
 
 function ChartRow({ label, n, top1, top2, top3 }: ChartRowProps) {
   const hasData = n !== null && n > 0 && top1 !== null && top2 !== null && top3 !== null;
-  const segs = hasData ? deriveSegments(top1!, top2!, top3!) : [];
+  const segs = hasData
+    ? deriveSegments(top1!, top2!, top3!).map((pct, i) => ({
+        pct,
+        color: SEGMENT_COLORS[i],
+        label: SEGMENT_LABELS[i],
+      }))
+    : [];
 
   return (
     <div
@@ -112,8 +129,8 @@ function ChartRow({ label, n, top1, top2, top3 }: ChartRowProps) {
       {/* Bar column */}
       <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%', gap: 6, overflow: 'visible', paddingRight: 24 }}>
         {hasData ? (
-          segs.map((pct, i) => (
-            <Segment key={i} pct={pct} color={SEGMENT_COLORS[i]} label={SEGMENT_LABELS[i]} />
+          segs.map((seg, i) => (
+            <Segment key={i} pct={seg.pct} color={seg.color} label={seg.label} />
           ))
         ) : (
           <div style={{ fontSize: 12, color: '#5E738C', height: 32, display: 'flex', alignItems: 'center' }}>

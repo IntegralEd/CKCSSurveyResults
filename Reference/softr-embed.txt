@@ -1,26 +1,65 @@
 ================================================================================
-  CKCS Survey Results — Softr Custom Code Block
-  Place this in a "Custom Code" block on the Softr page where the dashboard lives.
-  Softr evaluates {LOGGED_IN_USER:field} server-side before the browser receives it.
+  CKCS Report App — Softr Custom Code Snippets
+  One snippet per embedded page. Place each in a "Custom Code" block on
+  the corresponding Softr page. Softr evaluates {LOGGED_IN_USER:field}
+  server-side before the browser receives the HTML.
 ================================================================================
 
-ACCOUNT TYPE VALUES (set in the Airtable Users / Members table):
-  Site_Admin   — full access + "Site Admin" badge + User Context debug panel
+ACCOUNT TYPE VALUES (set in the Airtable Users_Sync / Members table):
+  Site_Admin   — full access + "Site Admin" badge + debug panel
   Client_Admin — access scoped to School_Access_Formula; no debug panel
   Region_User  — school picker filtered to their Assigned_Regions
   School_User  — school picker locked to their Assigned_Schools;
-                 can still compare to City / Region / Network
+                 can still compare City / Region / Network
 
-URL PARAMS SENT TO IFRAME:
-  userEmail        — logged-in user's email (used for server-side Airtable lookup)
-  accountType      — one of the four values above (fallback if no Airtable record)
-  assignedSchools  — comma-separated school names  (fallback only)
-  assignedRegions  — comma-separated region names  (fallback only)
+URL PARAMS SENT TO ALL IFRAMES:
+  userEmail        — logged-in user's email (server-side Airtable lookup)
+  accountType      — fallback if no Airtable record for this email
+  assignedSchools  — comma-separated school names (fallback only)
+  assignedRegions  — comma-separated region names (fallback only)
 
-NOTE: The app resolves authoritative permissions from Airtable Users_Sync using
-  the userEmail param. URL params are a fallback only. School_Access_Formula is
+NOTE: The app resolves authoritative permissions from Airtable Users_Sync
+  using userEmail. URL params are fallback only. School_Access_Formula is
   the canonical source for which schools a user can see.
 
+================================================================================
+  PERMISSION MATRIX  (applies to all pages)
+================================================================================
+
+  accountType     | Visible schools             | Picker locked? | Compare groups
+  ────────────────┼─────────────────────────────┼────────────────┼────────────────
+  Site_Admin      | All                         | No             | All
+  Client_Admin    | School_Access_Formula        | No             | All
+  Region_User     | Schools in assignedRegions   | No             | All
+  School_User     | Only assignedSchools         | Yes (locked)   | All
+  (none / direct) | All                         | No             | All
+
+================================================================================
+  AIRTABLE FIELDS REQUIRED ON USERS_SYNC TABLE
+================================================================================
+
+  Field name              | Type                  | Notes
+  ────────────────────────┼───────────────────────┼──────────────────────────────
+  Account_Type            | Single select         | Site_Admin / Client_Admin /
+                          |                       | Region_User / School_User
+  Assigned_Schools        | multipleRecordLinks   | Links to Schools table
+  Assigned_Regions        | multipleRecordLinks   | Links to Regions table
+  School_Access_Formula   | multilineText         | Precomputed comma-separated
+                          |                       | school names (direct + region)
+
+================================================================================
+  ROUTES SUMMARY
+================================================================================
+
+  /surveys         — Survey custom reports embed  ← Page 1 snippet below
+  /assessments     — Assessment results embed     ← Page 2 snippet below
+  /dashboard       — Legacy survey URL (still functional; same as /surveys)
+  /admin_access    — Direct browser access, full access, AppHeader visible
+  /admin/debug     — Airtable diagnostics + permission lookup
+
+================================================================================
+  PAGE 1 — SURVEY RESULTS  (/surveys)
+  Softr page: "Survey Results" (or whichever page hosts the survey dashboard)
 ================================================================================
 
 <!-- ── User context — hidden spans, rendered server-side by Softr ─────────── -->
@@ -29,9 +68,311 @@ NOTE: The app resolves authoritative permissions from Airtable Users_Sync using
 <span id="ckcs-user-assigned-schools" style="display:none">{LOGGED_IN_USER:Assigned_Schools}</span>
 <span id="ckcs-user-assigned-regions" style="display:none">{LOGGED_IN_USER:Assigned_Regions}</span>
 
-<!-- ── Loading animation — plays OUTSIDE the iframe while it loads ───────── -->
-<!-- Uses @lottiefiles/dotlottie-web via esm.sh CDN (ES module, no install).  -->
-<!-- The canvas renders immediately; the lottie file loads from Vercel.       -->
+<!-- ── Loading animation ─────────────────────────────────────────────────── -->
+<div id="ckcs-loading-surveys" style="
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+  gap: 12px;
+  background: #F0F4F8;
+  border-radius: 8px;
+">
+  <canvas id="ckcs-lottie-surveys" width="200" height="200" style="display:block"></canvas>
+  <p style="margin:0; font-size:13px; color:#5E738C; font-family:sans-serif">
+    Loading survey results…
+  </p>
+</div>
+
+<!-- ── Surveys iframe ────────────────────────────────────────────────────── -->
+<iframe
+  id="ckcs-frame-surveys"
+  style="width:100%; min-height:920px; border:none; border-radius:8px; display:none;"
+  allow="clipboard-write"
+  title="CKCS Survey Results"
+></iframe>
+
+<script type="module">
+import { DotLottie } from 'https://esm.sh/@lottiefiles/dotlottie-web@0.35.0';
+
+(function () {
+  function spanText(id) {
+    return (document.getElementById(id) || {}).textContent.trim() || '';
+  }
+
+  var userEmail       = spanText('ckcs-user-email');
+  var accountType     = spanText('ckcs-user-account-type');
+  var assignedSchools = spanText('ckcs-user-assigned-schools');
+  var assignedRegions = spanText('ckcs-user-assigned-regions');
+
+  // Loading animation
+  var canvas = document.getElementById('ckcs-lottie-surveys');
+  var dotLottie = null;
+  if (canvas) {
+    try {
+      dotLottie = new DotLottie({
+        autoplay: true, loop: true, canvas: canvas,
+        src: 'https://ckcs-survey-results.vercel.app/loading.lottie',
+      });
+    } catch (e) {}
+  }
+
+  // Build iframe src — base URL points to /surveys
+  var base = 'https://ckcs-survey-results.vercel.app/surveys';
+  var params = new URLSearchParams();
+  if (userEmail)       params.set('userEmail',       userEmail);
+  if (accountType)     params.set('accountType',     accountType);
+  if (assignedSchools) params.set('assignedSchools', assignedSchools);
+  if (assignedRegions) params.set('assignedRegions', assignedRegions);
+
+  var iframe  = document.getElementById('ckcs-frame-surveys');
+  var loading = document.getElementById('ckcs-loading-surveys');
+
+  iframe.addEventListener('load', function () {
+    if (loading) loading.style.display = 'none';
+    iframe.style.display = 'block';
+    if (dotLottie) dotLottie.destroy();
+  });
+
+  iframe.src = params.toString() ? (base + '?' + params.toString()) : base;
+
+  if (accountType === 'Site_Admin') {
+    console.log('[CKCS/surveys] user context:', {
+      email: userEmail, accountType, schools: assignedSchools, regions: assignedRegions,
+    });
+  }
+
+  // Auto-resize
+  window.addEventListener('message', function (event) {
+    if (event.origin !== 'https://ckcs-survey-results.vercel.app') return;
+    if (event.data && event.data.type === 'CKCS_RESIZE' && typeof event.data.height === 'number') {
+      document.getElementById('ckcs-frame-surveys').style.minHeight = event.data.height + 'px';
+    }
+  });
+})();
+</script>
+
+================================================================================
+  PAGE 2 — ASSESSMENT RESULTS  (/assessments)
+  Softr page: "Assessment Results" — user selects bank and school.
+  No pre-selected bank (user picks from all available banks).
+================================================================================
+
+<!-- ── User context — hidden spans, rendered server-side by Softr ─────────── -->
+<span id="ckcs-user-email"            style="display:none">{LOGGED_IN_USER:email}</span>
+<span id="ckcs-user-account-type"     style="display:none">{LOGGED_IN_USER:Account_Type}</span>
+<span id="ckcs-user-assigned-schools" style="display:none">{LOGGED_IN_USER:Assigned_Schools}</span>
+<span id="ckcs-user-assigned-regions" style="display:none">{LOGGED_IN_USER:Assigned_Regions}</span>
+
+<!-- ── Loading animation ─────────────────────────────────────────────────── -->
+<div id="ckcs-loading-assessments" style="
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+  gap: 12px;
+  background: #F0F4F8;
+  border-radius: 8px;
+">
+  <canvas id="ckcs-lottie-assessments" width="200" height="200" style="display:block"></canvas>
+  <p style="margin:0; font-size:13px; color:#5E738C; font-family:sans-serif">
+    Loading assessment results…
+  </p>
+</div>
+
+<!-- ── Assessments iframe ─────────────────────────────────────────────────── -->
+<iframe
+  id="ckcs-frame-assessments"
+  style="width:100%; min-height:920px; border:none; border-radius:8px; display:none;"
+  allow="clipboard-write"
+  title="CKCS Assessment Results"
+></iframe>
+
+<script type="module">
+import { DotLottie } from 'https://esm.sh/@lottiefiles/dotlottie-web@0.35.0';
+
+(function () {
+  function spanText(id) {
+    return (document.getElementById(id) || {}).textContent.trim() || '';
+  }
+
+  var userEmail       = spanText('ckcs-user-email');
+  var accountType     = spanText('ckcs-user-account-type');
+  var assignedSchools = spanText('ckcs-user-assigned-schools');
+  var assignedRegions = spanText('ckcs-user-assigned-regions');
+
+  // Loading animation
+  var canvas = document.getElementById('ckcs-lottie-assessments');
+  var dotLottie = null;
+  if (canvas) {
+    try {
+      dotLottie = new DotLottie({
+        autoplay: true, loop: true, canvas: canvas,
+        src: 'https://ckcs-survey-results.vercel.app/loading.lottie',
+      });
+    } catch (e) {}
+  }
+
+  // Build iframe src — base URL points to /assessments (no bankAtId = user picks)
+  var base = 'https://ckcs-survey-results.vercel.app/assessments';
+  var params = new URLSearchParams();
+  if (userEmail)       params.set('userEmail',       userEmail);
+  if (accountType)     params.set('accountType',     accountType);
+  if (assignedSchools) params.set('assignedSchools', assignedSchools);
+  if (assignedRegions) params.set('assignedRegions', assignedRegions);
+
+  var iframe  = document.getElementById('ckcs-frame-assessments');
+  var loading = document.getElementById('ckcs-loading-assessments');
+
+  iframe.addEventListener('load', function () {
+    if (loading) loading.style.display = 'none';
+    iframe.style.display = 'block';
+    if (dotLottie) dotLottie.destroy();
+  });
+
+  iframe.src = params.toString() ? (base + '?' + params.toString()) : base;
+
+  if (accountType === 'Site_Admin') {
+    console.log('[CKCS/assessments] user context:', {
+      email: userEmail, accountType, schools: assignedSchools, regions: assignedRegions,
+    });
+  }
+
+  // Auto-resize
+  window.addEventListener('message', function (event) {
+    if (event.origin !== 'https://ckcs-survey-results.vercel.app') return;
+    if (event.data && event.data.type === 'CKCS_RESIZE' && typeof event.data.height === 'number') {
+      document.getElementById('ckcs-frame-assessments').style.minHeight = event.data.height + 'px';
+    }
+  });
+})();
+</script>
+
+================================================================================
+  PAGE 3 — ASSESSMENT RESULTS WITH PRE-SELECTED BANK  (/assessments?bankAtId=…)
+  Softr page: Any page that links directly to a specific assessment bank.
+  The bankAtId value is the Assessment_Bank_Report_AT_ID formula field (recXXX).
+  User still selects the school; bank DDL is pre-selected and school list is
+  scoped to only schools with data for that bank.
+
+  HOW TO GET THE bankAtId VALUE:
+    Open Assessment_Banks in Airtable → find the record → copy the value of
+    the "Assessment_Bank_Report_AT_ID" formula field (looks like: recXXXXXXXXXX).
+    Paste it into the BANK_AT_ID variable below.
+================================================================================
+
+<!-- ── User context ───────────────────────────────────────────────────────── -->
+<span id="ckcs-user-email"            style="display:none">{LOGGED_IN_USER:email}</span>
+<span id="ckcs-user-account-type"     style="display:none">{LOGGED_IN_USER:Account_Type}</span>
+<span id="ckcs-user-assigned-schools" style="display:none">{LOGGED_IN_USER:Assigned_Schools}</span>
+<span id="ckcs-user-assigned-regions" style="display:none">{LOGGED_IN_USER:Assigned_Regions}</span>
+
+<!-- ── Loading animation ─────────────────────────────────────────────────── -->
+<div id="ckcs-loading-asmt-bank" style="
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 480px;
+  gap: 12px;
+  background: #F0F4F8;
+  border-radius: 8px;
+">
+  <canvas id="ckcs-lottie-asmt-bank" width="200" height="200" style="display:block"></canvas>
+  <p style="margin:0; font-size:13px; color:#5E738C; font-family:sans-serif">
+    Loading assessment results…
+  </p>
+</div>
+
+<!-- ── Assessment iframe ──────────────────────────────────────────────────── -->
+<iframe
+  id="ckcs-frame-asmt-bank"
+  style="width:100%; min-height:920px; border:none; border-radius:8px; display:none;"
+  allow="clipboard-write"
+  title="CKCS Assessment Results"
+></iframe>
+
+<script type="module">
+import { DotLottie } from 'https://esm.sh/@lottiefiles/dotlottie-web@0.35.0';
+
+(function () {
+  // ── CONFIGURE: paste the Assessment_Bank_Report_AT_ID value here ──────────
+  var BANK_AT_ID = 'recXXXXXXXXXXXXXX';   // ← replace with actual recXXX value
+  // ─────────────────────────────────────────────────────────────────────────
+
+  function spanText(id) {
+    return (document.getElementById(id) || {}).textContent.trim() || '';
+  }
+
+  var userEmail       = spanText('ckcs-user-email');
+  var accountType     = spanText('ckcs-user-account-type');
+  var assignedSchools = spanText('ckcs-user-assigned-schools');
+  var assignedRegions = spanText('ckcs-user-assigned-regions');
+
+  // Loading animation
+  var canvas = document.getElementById('ckcs-lottie-asmt-bank');
+  var dotLottie = null;
+  if (canvas) {
+    try {
+      dotLottie = new DotLottie({
+        autoplay: true, loop: true, canvas: canvas,
+        src: 'https://ckcs-survey-results.vercel.app/loading.lottie',
+      });
+    } catch (e) {}
+  }
+
+  // Build iframe src with bankAtId pre-selected
+  var base = 'https://ckcs-survey-results.vercel.app/assessments';
+  var params = new URLSearchParams();
+  if (userEmail)       params.set('userEmail',       userEmail);
+  if (accountType)     params.set('accountType',     accountType);
+  if (assignedSchools) params.set('assignedSchools', assignedSchools);
+  if (assignedRegions) params.set('assignedRegions', assignedRegions);
+  if (BANK_AT_ID)      params.set('bankAtId',        BANK_AT_ID);
+
+  var iframe  = document.getElementById('ckcs-frame-asmt-bank');
+  var loading = document.getElementById('ckcs-loading-asmt-bank');
+
+  iframe.addEventListener('load', function () {
+    if (loading) loading.style.display = 'none';
+    iframe.style.display = 'block';
+    if (dotLottie) dotLottie.destroy();
+  });
+
+  iframe.src = params.toString() ? (base + '?' + params.toString()) : base;
+
+  if (accountType === 'Site_Admin') {
+    console.log('[CKCS/assessments/bank] user context:', {
+      email: userEmail, accountType, bankAtId: BANK_AT_ID,
+      schools: assignedSchools, regions: assignedRegions,
+    });
+  }
+
+  // Auto-resize
+  window.addEventListener('message', function (event) {
+    if (event.origin !== 'https://ckcs-survey-results.vercel.app') return;
+    if (event.data && event.data.type === 'CKCS_RESIZE' && typeof event.data.height === 'number') {
+      document.getElementById('ckcs-frame-asmt-bank').style.minHeight = event.data.height + 'px';
+    }
+  });
+})();
+</script>
+
+================================================================================
+  LEGACY — /dashboard  (backwards-compatible; same as /surveys)
+  Keep on any existing Softr pages already pointing to /dashboard.
+  New pages should use Page 1 (/surveys) above.
+================================================================================
+
+<!-- ── User context ───────────────────────────────────────────────────────── -->
+<span id="ckcs-user-email"            style="display:none">{LOGGED_IN_USER:email}</span>
+<span id="ckcs-user-account-type"     style="display:none">{LOGGED_IN_USER:Account_Type}</span>
+<span id="ckcs-user-assigned-schools" style="display:none">{LOGGED_IN_USER:Assigned_Schools}</span>
+<span id="ckcs-user-assigned-regions" style="display:none">{LOGGED_IN_USER:Assigned_Regions}</span>
+
+<!-- ── Loading animation ─────────────────────────────────────────────────── -->
 <div id="ckcs-loading" style="
   display: flex;
   flex-direction: column;
@@ -48,7 +389,7 @@ NOTE: The app resolves authoritative permissions from Airtable Users_Sync using
   </p>
 </div>
 
-<!-- ── Dashboard iframe (hidden until loaded) ────────────────────────────── -->
+<!-- ── Dashboard iframe ──────────────────────────────────────────────────── -->
 <iframe
   id="ckcs-dashboard"
   style="width:100%; min-height:920px; border:none; border-radius:8px; display:none;"
@@ -57,51 +398,37 @@ NOTE: The app resolves authoritative permissions from Airtable Users_Sync using
 ></iframe>
 
 <script type="module">
-// Load the DotLottie animation library from CDN (ES module, no bundle step)
 import { DotLottie } from 'https://esm.sh/@lottiefiles/dotlottie-web@0.35.0';
 
 (function () {
-  // ── 1. Read Softr-rendered user context ──────────────────────────────────
   function spanText(id) {
     return (document.getElementById(id) || {}).textContent.trim() || '';
   }
 
-  var userEmail        = spanText('ckcs-user-email');
-  var accountType      = spanText('ckcs-user-account-type');
-  var assignedSchools  = spanText('ckcs-user-assigned-schools');
-  var assignedRegions  = spanText('ckcs-user-assigned-regions');
+  var userEmail       = spanText('ckcs-user-email');
+  var accountType     = spanText('ckcs-user-account-type');
+  var assignedSchools = spanText('ckcs-user-assigned-schools');
+  var assignedRegions = spanText('ckcs-user-assigned-regions');
 
-  // ── 2. Start loading animation (Softr-side, not inside the iframe) ───────
   var canvas = document.getElementById('ckcs-lottie-canvas');
   var dotLottie = null;
-
   if (canvas) {
     try {
       dotLottie = new DotLottie({
-        autoplay: true,
-        loop: true,
-        canvas: canvas,
+        autoplay: true, loop: true, canvas: canvas,
         src: 'https://ckcs-survey-results.vercel.app/loading.lottie',
       });
-    } catch (e) {
-      // DotLottie unavailable — loading div stays visible without animation
-    }
+    } catch (e) {}
   }
 
-  // ── 3. Build iframe src with user context as query params ─────────────────
-  //       The Next.js app looks up permissions in Airtable by userEmail.
   var base = 'https://ckcs-survey-results.vercel.app/dashboard';
   var params = new URLSearchParams();
-
   if (userEmail)       params.set('userEmail',       userEmail);
   if (accountType)     params.set('accountType',     accountType);
   if (assignedSchools) params.set('assignedSchools', assignedSchools);
   if (assignedRegions) params.set('assignedRegions', assignedRegions);
 
-  var src = params.toString() ? (base + '?' + params.toString()) : base;
-
-  // ── 4. Load iframe; swap loading placeholder → iframe on load ────────────
-  var iframe = document.getElementById('ckcs-dashboard');
+  var iframe  = document.getElementById('ckcs-dashboard');
   var loading = document.getElementById('ckcs-loading');
 
   iframe.addEventListener('load', function () {
@@ -110,66 +437,41 @@ import { DotLottie } from 'https://esm.sh/@lottiefiles/dotlottie-web@0.35.0';
     if (dotLottie) dotLottie.destroy();
   });
 
-  iframe.src = src;
+  iframe.src = params.toString() ? (base + '?' + params.toString()) : base;
 
-  // ── 5. Console log for Site_Admin debugging (no secrets) ─────────────────
   if (accountType === 'Site_Admin') {
     console.log('[CKCS] user context loaded:', {
-      email: userEmail, accountType: accountType,
-      schools: assignedSchools, regions: assignedRegions,
+      email: userEmail, accountType, schools: assignedSchools, regions: assignedRegions,
     });
   }
 
-  // ── 6. Auto-resize iframe to content height ──────────────────────────────
-  //       The dashboard posts CKCS_RESIZE messages when content height changes.
   window.addEventListener('message', function (event) {
     if (event.origin !== 'https://ckcs-survey-results.vercel.app') return;
     if (event.data && event.data.type === 'CKCS_RESIZE' && typeof event.data.height === 'number') {
       document.getElementById('ckcs-dashboard').style.minHeight = event.data.height + 'px';
     }
   });
-
 })();
 </script>
 
 ================================================================================
-  PERMISSION MATRIX
+  NOTES FOR FUTURE PAGES (not yet built)
 ================================================================================
 
-  accountType     | Visible schools            | Picker locked? | City/Region/Network compare
-  ────────────────┼────────────────────────────┼────────────────┼────────────────────────────
-  Site_Admin      | All                        | No             | Yes (all groups)
-  Client_Admin    | School_Access_Formula       | No             | Yes (all groups)
-  Region_User     | Schools in assignedRegions  | No             | Yes (all groups)
-  School_User     | Only assignedSchools        | Yes (locked)   | Yes (all groups enabled)
-  (none / direct) | All                        | No             | Yes (all groups)
+  School Detail — Survey
+    Route:  /surveys/school?schoolId={RECORD_ID}
+    Params: userEmail, accountType, assignedSchools, assignedRegions, schoolId
+    Softr:  Triggered from a school list page; passes the school record ID.
+            DashboardClient receives lockedSchool prop; admin DDL visible.
 
-================================================================================
-  AIRTABLE FIELDS REQUIRED ON YOUR USERS_SYNC TABLE
-================================================================================
+  School Detail — Assessment
+    Route:  /assessments/school?schoolId={RECORD_ID}
+    Params: userEmail, accountType, assignedSchools, assignedRegions, schoolId
+    Softr:  Same pattern; AssessmentClient receives lockedSchool; bank DDL required.
+            User must select a bank before results load.
 
-  Field name              | Type                  | Notes
-  ────────────────────────┼───────────────────────┼─────────────────────────────────────────
-  Account_Type            | Single select         | Site_Admin / Client_Admin / Region_User / School_User
-  Assigned_Schools        | multipleRecordLinks   | Links to Schools table
-  Assigned_Regions        | multipleRecordLinks   | Links to Regions table
-  School_Access_Formula   | multilineText         | Precomputed comma-separated school names
-                          |                       | (direct assignments UNION region-inherited)
-
-  The app resolves permissions server-side via fetchUserPermissions(email):
-    - School_Access_Formula  → assignedSchools (canonical school DDL filter)
-    - Assigned_Regions IDs   → Region_Name strings (via TABLE_REGIONS lookup)
-    URL params are fallback only (dev / users not in Users_Sync).
-
-================================================================================
-  ROUTES
-================================================================================
-
-  /dashboard       — Softr embed (this snippet). User context applied.
-                     No app header (Softr provides nav).
-  /admin_access    — Direct browser access. Full access, all schools,
-                     brand AppHeader visible. Same DashboardClient as /dashboard.
-  /admin/debug     — Airtable diagnostics + User Permissions Lookup
-                     (?testEmail=user@example.com).
+  For both school detail pages, the custom code snippet follows Page 1/2 above
+  but adds schoolId to the URLSearchParams:
+    params.set('schoolId', '{AIRTABLE_RECORD_ID_OF_SCHOOL}');
 
 ================================================================================
