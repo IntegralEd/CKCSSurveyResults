@@ -277,9 +277,12 @@ const BANK_ITEM_AT_IDS_FIELD = 'Assessment_Item_AT_ID (from Assessment_Items)';
  * Fetch all Assessment_Items for a given bank, keyed by Item_Order.
  *
  * Two-step approach:
- *   1. Fetch the Assessment_Banks record by its ID to get the
- *      "Assessment_Item_AT_ID (from Assessment_Items)" lookup array.
- *   2. Filter Assessment_Items where {Item_AT_ID} matches any of those values.
+ *   1. Fetch the Assessment_Banks record (all fields) to find linked item IDs.
+ *      Strategy A: use the lookup field "Assessment_Item_AT_ID (from Assessment_Items)"
+ *                  → Item_AT_ID text values → filter by {Item_AT_ID}
+ *      Strategy B: scan all fields for a multipleRecordLinks array whose values are
+ *                  Airtable record IDs (start with "rec") → filter by RECORD_ID()
+ *   2. Filter Assessment_Items using whichever identifiers were found.
  *
  * @param bankReportAtId  Assessment_Bank_Report_AT_ID value (= the bank's record ID)
  * @returns Map<itemOrder, AssessmentItemDetail>
@@ -289,10 +292,10 @@ export async function fetchAssessmentItemDetails(
 ): Promise<Map<number, AssessmentItemDetail>> {
   const esc = bankReportAtId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
-  // Step 1 — get item AT_IDs from the bank record
+  // Step 1 — fetch bank record with ALL fields (no fields restriction) so we
+  // can inspect both the lookup field and any multipleRecordLinks fields.
   const bankRecords = await fetchAllRecords(TABLE_ASSESSMENT_BANKS, {
     filterByFormula: `RECORD_ID() = "${esc}"`,
-    fields: [BANK_ITEM_AT_IDS_FIELD],
   });
 
   const bankRecord = bankRecords[0];
@@ -301,19 +304,49 @@ export async function fetchAssessmentItemDetails(
     return new Map();
   }
 
-  const rawIds = bankRecord.fields[BANK_ITEM_AT_IDS_FIELD];
-  const itemAtIds: string[] = Array.isArray(rawIds)
-    ? rawIds.map(String).filter(Boolean)
-    : [];
+  const bf = bankRecord.fields as Record<string, unknown>;
+  console.log(`[fetchAssessmentItemDetails] bank fields: ${Object.keys(bf).join(' | ')}`);
 
-  console.log(`[fetchAssessmentItemDetails] bank=${bankReportAtId} → ${itemAtIds.length} item AT_IDs`);
-  if (itemAtIds.length === 0) return new Map();
+  // Strategy A — use the lookup field
+  let itemIdentifiers: string[] = [];
+  let useRecordIdFilter = false;
 
-  // Step 2 — fetch Assessment_Items by Item_AT_ID
-  const orClauses = itemAtIds
-    .map((id) => `{Item_AT_ID} = "${id.replace(/"/g, '\\"')}"`)
-    .join(', ');
-  const filterByFormula = itemAtIds.length === 1 ? orClauses : `OR(${orClauses})`;
+  const rawLookup = bf[BANK_ITEM_AT_IDS_FIELD];
+  if (Array.isArray(rawLookup) && rawLookup.length > 0) {
+    itemIdentifiers = rawLookup.map(String).filter(Boolean);
+    useRecordIdFilter = false;
+    console.log(`[fetchAssessmentItemDetails] strategy A (lookup) → ${itemIdentifiers.length} Item_AT_IDs`);
+  }
+
+  // Strategy B — scan for a multipleRecordLinks field whose entries are rec IDs
+  if (itemIdentifiers.length === 0) {
+    const knownFields = new Set<string>([
+      ...Object.values(ASSESSMENT_BANK_FIELDS),
+      BANK_ITEM_AT_IDS_FIELD,
+    ]);
+    for (const [key, val] of Object.entries(bf)) {
+      if (knownFields.has(key)) continue;
+      if (Array.isArray(val) && val.length > 0) {
+        const strs = val.map(String);
+        if (strs.every((s) => /^rec[A-Za-z0-9]{10,}$/.test(s))) {
+          itemIdentifiers = strs;
+          useRecordIdFilter = true;
+          console.log(`[fetchAssessmentItemDetails] strategy B (link field "${key}") → ${strs.length} record IDs`);
+          break;
+        }
+      }
+    }
+  }
+
+  console.log(`[fetchAssessmentItemDetails] bank=${bankReportAtId} → ${itemIdentifiers.length} identifiers, useRecordIdFilter=${useRecordIdFilter}`);
+  if (itemIdentifiers.length === 0) return new Map();
+
+  // Step 2 — fetch Assessment_Items
+  const clauses = itemIdentifiers.map((id) => {
+    const safe = id.replace(/"/g, '\\"');
+    return useRecordIdFilter ? `RECORD_ID() = "${safe}"` : `{Item_AT_ID} = "${safe}"`;
+  });
+  const filterByFormula = clauses.length === 1 ? clauses[0] : `OR(${clauses.join(', ')})`;
 
   const records = await fetchAllRecords(TABLE_ASSESSMENT_ITEMS, {
     filterByFormula,
