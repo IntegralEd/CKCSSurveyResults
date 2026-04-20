@@ -54,11 +54,6 @@ function assessmentFilename(assessmentId: string): string {
  * The ⓘ button on the # column remains for the full modal (MC options, rubric).
  */
 function ItemDetailExpand({ prompt, detail }: { prompt: string; detail: AssessmentItemDetail }) {
-  const correctAnswer =
-    detail.correctMcFlat ||
-    (detail.correctMcLetters.length > 0 ? detail.correctMcLetters.join(', ') : '') ||
-    detail.correctResponseText;
-
   return (
     <details className="group">
       <summary
@@ -80,9 +75,7 @@ function ItemDetailExpand({ prompt, detail }: { prompt: string; detail: Assessme
         <span className="text-sm text-slate-800">{prompt}</span>
       </summary>
 
-      {/* Detail panel */}
-      <div className="mt-2 ml-4 border-l-2 border-slate-200 pl-3 space-y-2">
-        {/* Type + Points + Standards */}
+      <div className="mt-2 ml-4 border-l-2 border-slate-200 pl-3 space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           {detail.itemType && (
             <span className="text-xs font-semibold px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200">
@@ -94,23 +87,10 @@ function ItemDetailExpand({ prompt, detail }: { prompt: string; detail: Assessme
               {detail.pointsPossible} {detail.pointsPossible === 1 ? 'pt' : 'pts'}
             </span>
           )}
-          {detail.standardsCode && (
-            <span className="text-xs text-[#5E738C]">{detail.standardsCode}</span>
-          )}
         </div>
-
-        {/* Full prompt when richer than the extract */}
-        {detail.prompt && detail.prompt.trim() !== prompt.trim() && (
-          <div className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 rounded px-2 py-1.5 border border-slate-200">
+        {detail.prompt && (
+          <div className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
             {detail.prompt}
-          </div>
-        )}
-
-        {/* Correct answer */}
-        {correctAnswer && (
-          <div className="text-xs font-medium text-green-700 flex items-start gap-1">
-            <span className="shrink-0">✓</span>
-            <span>{correctAnswer}</span>
           </div>
         )}
       </div>
