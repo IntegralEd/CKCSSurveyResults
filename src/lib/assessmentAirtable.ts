@@ -266,6 +266,7 @@ export const ASSESSMENT_ITEM_FIELDS = {
   standardsCode:       'Standards_Code',
   rubricReference:     'Rubric_Reference',
   bankReportAtId:      'Assessment_Bank_Report_AT_ID',
+  bankLink:            'Assessment_Bank_Link',   // multipleRecordLinks → used in filter fallback
 } as const;
 
 // ─── Assessment_Items fetch ───────────────────────────────────────────────────
@@ -273,21 +274,28 @@ export const ASSESSMENT_ITEM_FIELDS = {
 /**
  * Fetch all Assessment_Items for a given bank, keyed by Item_Order.
  *
- * Uses Assessment_Bank_Report_AT_ID formula field on Assessment_Items
- * for a direct equality filter (formula field, not a lookup array).
+ * Assessment_Bank_Report_AT_ID on Assessment_Items is a formula field whose
+ * return format is uncertain (may be a plain string or wrapped). We use the
+ * same FIND/ARRAYJOIN pattern as fetchAssessmentResults for robustness.
+ * Also filters by Assessment_Bank_Link (multipleRecordLinks) as a fallback
+ * in case the formula field doesn't match.
  *
- * @param bankReportAtId  Assessment_Bank_Report_AT_ID value (recXXX)
+ * @param bankReportAtId  Assessment_Bank_Report_AT_ID value (recXXX — same as bank record ID)
  * @returns Map<itemOrder, AssessmentItemDetail>
  */
 export async function fetchAssessmentItemDetails(
   bankReportAtId: string
 ): Promise<Map<number, AssessmentItemDetail>> {
   const esc = bankReportAtId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  // Use FIND/ARRAYJOIN on the formula field (same pattern as results filter)
+  // OR direct equality on the linked record field — whichever matches
+  const filterByFormula = `OR(FIND("${esc}", ARRAYJOIN({Assessment_Bank_Report_AT_ID})) > 0, {Assessment_Bank_Link} = "${esc}")`;
   const records = await fetchAllRecords(TABLE_ASSESSMENT_ITEMS, {
-    filterByFormula: `{Assessment_Bank_Report_AT_ID} = "${esc}"`,
+    filterByFormula,
     fields: Object.values(ASSESSMENT_ITEM_FIELDS),
     sort: [{ field: ASSESSMENT_ITEM_FIELDS.itemOrder, direction: 'asc' }],
   });
+  console.log(`[fetchAssessmentItemDetails] bankReportAtId=${bankReportAtId} → ${records.length} items`);
 
   const map = new Map<number, AssessmentItemDetail>();
 
