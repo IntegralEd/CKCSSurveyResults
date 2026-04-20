@@ -26,7 +26,7 @@ import ResultsTable from '@/components/ResultsTable';
 import SchoolMultiSelect from '@/components/SchoolMultiSelect';
 import DownloadButton from '@/components/DownloadButton';
 import type { CsvColumn } from '@/lib/csv';
-import type { AssessmentBank, AssessmentRow, AssessmentComparisonGroup } from '@/lib/assessmentTypes';
+import type { AssessmentBank, AssessmentRow, AssessmentComparisonGroup, AssessmentItemDetail } from '@/lib/assessmentTypes';
 import type { UserContext, SchoolInfo } from '@/lib/types';
 
 const LoadingOverlay = dynamic(() => import('@/components/LoadingOverlay'), { ssr: false });
@@ -44,6 +44,78 @@ function assessmentFilename(assessmentId: string): string {
   // Preserve case; replace spaces/special chars with underscores
   const slug = assessmentId.replace(/[^A-Za-z0-9\-]+/g, '_').replace(/^_+|_+$/g, '');
   return `${slug}_generated_${yyyy}${mm}${dd}_${hh}${min}.csv`;
+}
+
+// ─── Inline item detail expand (table view) ───────────────────────────────────
+
+/**
+ * Native <details> expand rendered inside the Item cell in the table.
+ * Shows type badge, points, standards code, full prompt, and correct answer.
+ * The ⓘ button on the # column remains for the full modal (MC options, rubric).
+ */
+function ItemDetailExpand({ prompt, detail }: { prompt: string; detail: AssessmentItemDetail }) {
+  const correctAnswer =
+    detail.correctMcFlat ||
+    (detail.correctMcLetters.length > 0 ? detail.correctMcLetters.join(', ') : '') ||
+    detail.correctResponseText;
+
+  return (
+    <details className="group">
+      <summary
+        className="cursor-pointer list-none flex items-start gap-1.5"
+        style={{ WebkitAppearance: 'none' } as React.CSSProperties}
+      >
+        {/* Disclosure chevron — rotates when open */}
+        <svg
+          className="w-3 h-3 mt-[3px] shrink-0 text-slate-400 transition-transform duration-150 group-open:rotate-90"
+          viewBox="0 0 6 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="1,1 5,5 1,9" />
+        </svg>
+        <span className="text-sm text-slate-800">{prompt}</span>
+      </summary>
+
+      {/* Detail panel */}
+      <div className="mt-2 ml-4 border-l-2 border-slate-200 pl-3 space-y-2">
+        {/* Type + Points + Standards */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {detail.itemType && (
+            <span className="text-xs font-semibold px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200">
+              {detail.itemType}
+            </span>
+          )}
+          {detail.pointsPossible !== null && (
+            <span className="text-xs text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">
+              {detail.pointsPossible} {detail.pointsPossible === 1 ? 'pt' : 'pts'}
+            </span>
+          )}
+          {detail.standardsCode && (
+            <span className="text-xs text-[#5E738C]">{detail.standardsCode}</span>
+          )}
+        </div>
+
+        {/* Full prompt when richer than the extract */}
+        {detail.prompt && detail.prompt.trim() !== prompt.trim() && (
+          <div className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-slate-50 rounded px-2 py-1.5 border border-slate-200">
+            {detail.prompt}
+          </div>
+        )}
+
+        {/* Correct answer */}
+        {correctAnswer && (
+          <div className="text-xs font-medium text-green-700 flex items-start gap-1">
+            <span className="shrink-0">✓</span>
+            <span>{correctAnswer}</span>
+          </div>
+        )}
+      </div>
+    </details>
+  );
 }
 
 // ─── Column definitions ───────────────────────────────────────────────────────
@@ -475,20 +547,37 @@ export default function AssessmentClient({
               columns={tableCols}
               rows={tableRows}
               renderCell={(colKey, val, row) => {
-                if (colKey !== 'itemOrder') return undefined;
-                const order = val as number;
-                const srcRow = rows.find((r) => r.itemOrder === order && r.schoolName === (row.schoolName as string));
-                return (
-                  <span className="inline-flex items-center justify-center gap-1">
-                    <span className="text-slate-400 tabular-nums">{order}</span>
-                    {srcRow?.detail && (
-                      <ItemInfoButton
-                        onClick={() => setModalRow(srcRow)}
-                        label={`View detail for item ${order}`}
-                      />
-                    )}
-                  </span>
+                const order = row.itemOrder as number;
+                const srcRow = rows.find(
+                  (r) => r.itemOrder === order && r.schoolName === (row.schoolName as string)
                 );
+
+                // # column — order number + ⓘ button for full modal (MC options, rubric)
+                if (colKey === 'itemOrder') {
+                  return (
+                    <span className="inline-flex items-center justify-center gap-1">
+                      <span className="text-slate-400 tabular-nums">{order}</span>
+                      {srcRow?.detail && (
+                        <ItemInfoButton
+                          onClick={() => setModalRow(srcRow)}
+                          label={`View detail for item ${order}`}
+                        />
+                      )}
+                    </span>
+                  );
+                }
+
+                // Item column — inline <details> expand with type, points, correct answer
+                if (colKey === 'itemPrompt' && srcRow?.detail) {
+                  return (
+                    <ItemDetailExpand
+                      prompt={String(val ?? '')}
+                      detail={srcRow.detail}
+                    />
+                  );
+                }
+
+                return undefined;
               }}
             />
           )}
