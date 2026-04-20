@@ -264,9 +264,10 @@ export const ASSESSMENT_ITEM_FIELDS = {
   optionF:             'Option_F',
   pointsPossible:      'Points_Possible',
   standardsCode:       'Standards_Code',
-  rubricReference:     'Rubric_Reference',
-  bankReportAtId:      'Assessment_Bank_Report_AT_ID',
-  bankLink:            'Assessment_Bank_Link',   // multipleRecordLinks → used in filter fallback
+  rubricReference:          'Rubric_Reference',
+  bankReportAtId:           'Assessment_Bank_Report_AT_ID',
+  bankLink:                 'Assessment_Bank_Link',          // multipleRecordLinks
+  bankAnalysisAtId:         'Assessment_Bank_Analysis_AT_ID', // singleLineText — may store AT_ID
 } as const;
 
 // ─── Assessment_Items fetch ───────────────────────────────────────────────────
@@ -287,9 +288,8 @@ export async function fetchAssessmentItemDetails(
   bankReportAtId: string
 ): Promise<Map<number, AssessmentItemDetail>> {
   const esc = bankReportAtId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  // Use FIND/ARRAYJOIN on the formula field (same pattern as results filter)
-  // OR direct equality on the linked record field — whichever matches
-  const filterByFormula = `OR(FIND("${esc}", ARRAYJOIN({Assessment_Bank_Report_AT_ID})) > 0, {Assessment_Bank_Link} = "${esc}")`;
+  // Three-way OR: formula FIND, singleLineText equality, linked record equality
+  const filterByFormula = `OR(FIND("${esc}", ARRAYJOIN({Assessment_Bank_Report_AT_ID})) > 0, {Assessment_Bank_Analysis_AT_ID} = "${esc}", {Assessment_Bank_Link} = "${esc}")`;
   const records = await fetchAllRecords(TABLE_ASSESSMENT_ITEMS, {
     filterByFormula,
     fields: Object.values(ASSESSMENT_ITEM_FIELDS),

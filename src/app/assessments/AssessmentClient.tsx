@@ -604,6 +604,7 @@ export default function AssessmentClient({
             <div>bankReportAtId: {loadedBankId}</div>
             <div>schools: {loadedSchools.map((s) => s.name).join(', ')}</div>
             <div>rows: {rows?.length ?? 0}</div>
+            <div>itemDetails: {rows?.filter((r) => r.detail).length ?? 0} / {rows?.length ?? 0}</div>
             <div>comparisonGroups: {comparisonGroups.join(', ') || 'none'}</div>
             <div>accountType: {userContext.accountType || '(none)'}</div>
           </div>
