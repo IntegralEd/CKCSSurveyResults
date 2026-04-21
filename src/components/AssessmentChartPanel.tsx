@@ -27,9 +27,18 @@ const ASSESSMENT_SEGMENTS = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Segment({ pct, color, label }: { pct: number; color: string; label: string }) {
+function Segment({
+  pct,
+  color,
+  label,
+  count,
+}: {
+  pct: number;
+  color: string;
+  label: string;
+  count?: number;
+}) {
   if (pct <= 0) return <div style={{ flex: 0 }} />;
-  const showLabel = pct >= 2;
   return (
     <div
       style={{
@@ -37,26 +46,32 @@ function Segment({ pct, color, label }: { pct: number; color: string; label: str
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 4,
+        gap: 2,
         minWidth: pct > 0 ? 2 : 0,
         overflow: 'visible',
       }}
     >
+      {/* Percentage + count label — always shown, overflows for tiny segments */}
       <div
         style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#17345B',
-          lineHeight: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           whiteSpace: 'nowrap',
           textAlign: 'center',
-          minHeight: 14,
           paddingLeft: 2,
           paddingRight: 2,
         }}
-        title={`${label}: ${pct.toFixed(1)}%`}
+        title={`${label}: ${pct.toFixed(1)}%${count !== undefined ? ` (n=${count})` : ''}`}
       >
-        {showLabel ? `${Math.round(pct)}%` : ''}
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#17345B', lineHeight: 1 }}>
+          {Math.round(pct)}%
+        </span>
+        {count !== undefined && count > 0 && (
+          <span style={{ fontSize: 10, fontWeight: 400, color: '#5E738C', lineHeight: 1.2 }}>
+            {count.toLocaleString()}
+          </span>
+        )}
       </div>
       <div
         style={{
@@ -93,12 +108,16 @@ function AssessmentBarRow({
     && partialCreditPct !== null
     && noCreditPct !== null;
 
+  /** Compute a segment count from n × pct/100 */
+  const cnt = (pct: number | null) =>
+    n && pct !== null ? Math.round(n * pct / 100) : undefined;
+
   const segments = hasData
     ? [
-        { pct: fullCreditPct!,    color: '#17345B', label: 'Full Credit' },
-        { pct: partialCreditPct!, color: '#255694', label: 'Partial Credit' },
-        { pct: noCreditPct!,      color: '#F79520', label: 'No Credit' },
-        { pct: blankPct ?? 0,     color: '#D1D5DB', label: 'Blank' },
+        { pct: fullCreditPct!,    color: '#17345B', label: 'Full Credit',    count: cnt(fullCreditPct) },
+        { pct: partialCreditPct!, color: '#255694', label: 'Partial Credit', count: cnt(partialCreditPct) },
+        { pct: noCreditPct!,      color: '#F79520', label: 'No Credit',      count: cnt(noCreditPct) },
+        { pct: blankPct ?? 0,     color: '#D1D5DB', label: 'Blank',          count: cnt(blankPct ?? 0) },
       ]
     : [];
 
@@ -118,7 +137,7 @@ function AssessmentBarRow({
       <div style={{ display: 'flex', alignItems: 'flex-end', width: '100%', gap: 6, overflow: 'visible', paddingRight: 24 }}>
         {hasData ? (
           segments.map((seg, i) => (
-            <Segment key={i} pct={seg.pct} color={seg.color} label={seg.label} />
+            <Segment key={i} pct={seg.pct} color={seg.color} label={seg.label} count={seg.count} />
           ))
         ) : (
           <div style={{ fontSize: 12, color: '#5E738C', height: 32, display: 'flex', alignItems: 'center' }}>

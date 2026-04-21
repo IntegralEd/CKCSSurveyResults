@@ -27,18 +27,19 @@
     print-color-adjust: exact;
   }
 
-  /* When printing charts: hide everything, then show only the chart panel */
+  /* When printing charts: hide everything, show only the charts wrapper.
+     Use position: absolute (not fixed) so content flows across multiple pages. */
   body.print-charts {
     visibility: hidden;
   }
-  body.print-charts .chart-panel {
+  body.print-charts .print-charts-target {
     visibility: visible;
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
   }
-  body.print-charts .chart-panel * {
+  body.print-charts .print-charts-target * {
     visibility: visible;
   }
 

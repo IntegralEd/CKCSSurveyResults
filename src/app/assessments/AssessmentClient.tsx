@@ -563,7 +563,7 @@ export default function AssessmentClient({
           )}
 
           {viewMode === 'charts' && (
-            <div className="space-y-8">
+            <div className="space-y-8 print-charts-target">
               {chartGroups.map(({ schoolName, schoolRows }) => (
                 <AssessmentChartPanel
                   key={schoolName}
