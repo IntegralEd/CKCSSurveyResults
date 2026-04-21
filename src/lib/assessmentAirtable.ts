@@ -268,8 +268,10 @@ export const ASSESSMENT_ITEM_FIELDS = {
   rubricReference:     'Rubric_Reference',
 } as const;
 
-/** Field on Assessment_Banks that lists all linked item AT_IDs (multipleLookupValues) */
+/** Lookup field on Assessment_Banks — Item_AT_ID values from linked Assessment_Items records */
 const BANK_ITEM_AT_IDS_FIELD = 'Assessment_Item_AT_ID (from Assessment_Items)';
+/** Direct multipleRecordLinks field on Assessment_Banks → Assessment_Items (confirmed from field list) */
+const BANK_ITEMS_LINK_FIELD = 'Assessment_Items';
 
 // ─── Assessment_Items fetch ───────────────────────────────────────────────────
 
@@ -307,34 +309,25 @@ export async function fetchAssessmentItemDetails(
   const bf = bankRecord.fields as Record<string, unknown>;
   console.log(`[fetchAssessmentItemDetails] bank fields: ${Object.keys(bf).join(' | ')}`);
 
-  // Strategy A — use the lookup field
+  // Strategy A — the "Assessment_Items" multipleRecordLinks field on Assessment_Banks
+  // directly contains the Airtable record IDs of linked Assessment_Items rows.
   let itemIdentifiers: string[] = [];
   let useRecordIdFilter = false;
 
-  const rawLookup = bf[BANK_ITEM_AT_IDS_FIELD];
-  if (Array.isArray(rawLookup) && rawLookup.length > 0) {
-    itemIdentifiers = rawLookup.map(String).filter(Boolean);
-    useRecordIdFilter = false;
-    console.log(`[fetchAssessmentItemDetails] strategy A (lookup) → ${itemIdentifiers.length} Item_AT_IDs`);
+  const rawLink = bf[BANK_ITEMS_LINK_FIELD];
+  if (Array.isArray(rawLink) && rawLink.length > 0) {
+    itemIdentifiers = rawLink.map(String).filter((s) => s.startsWith('rec'));
+    useRecordIdFilter = true;
+    console.log(`[fetchAssessmentItemDetails] strategy A (Assessment_Items link) → ${itemIdentifiers.length} record IDs`);
   }
 
-  // Strategy B — scan for a multipleRecordLinks field whose entries are rec IDs
+  // Strategy B — fall back to the lookup field (Item_AT_ID text values)
   if (itemIdentifiers.length === 0) {
-    const knownFields = new Set<string>([
-      ...Object.values(ASSESSMENT_BANK_FIELDS),
-      BANK_ITEM_AT_IDS_FIELD,
-    ]);
-    for (const [key, val] of Object.entries(bf)) {
-      if (knownFields.has(key)) continue;
-      if (Array.isArray(val) && val.length > 0) {
-        const strs = val.map(String);
-        if (strs.every((s) => /^rec[A-Za-z0-9]{10,}$/.test(s))) {
-          itemIdentifiers = strs;
-          useRecordIdFilter = true;
-          console.log(`[fetchAssessmentItemDetails] strategy B (link field "${key}") → ${strs.length} record IDs`);
-          break;
-        }
-      }
+    const rawLookup = bf[BANK_ITEM_AT_IDS_FIELD];
+    if (Array.isArray(rawLookup) && rawLookup.length > 0) {
+      itemIdentifiers = rawLookup.map(String).filter(Boolean);
+      useRecordIdFilter = false;
+      console.log(`[fetchAssessmentItemDetails] strategy B (Item_AT_ID lookup) → ${itemIdentifiers.length} AT_IDs`);
     }
   }
 
