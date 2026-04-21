@@ -46,6 +46,103 @@ function assessmentFilename(assessmentId: string): string {
   return `${slug}_generated_${yyyy}${mm}${dd}_${hh}${min}.csv`;
 }
 
+// ─── Group-by ─────────────────────────────────────────────────────────────────
+
+type AssessmentGroupBy = 'item' | 'domain' | 'school';
+
+/**
+ * Transforms flat AssessmentRow[] into display rows with optional section headers.
+ *
+ * Group by item (single school): sort by itemOrder, no headers.
+ * Group by item (multi-school):  one header per item; sub-rows show school name
+ *                                in the Item column and blank itemOrder.
+ * Group by domain:               one header per first domain; sub-rows keep all fields.
+ * Group by school:               one header per school; sub-rows keep all fields.
+ */
+function buildAssessmentTableRows(
+  rows: AssessmentRow[],
+  groupBy: AssessmentGroupBy,
+  isMultiSchool: boolean
+): Record<string, unknown>[] {
+  if (!rows.length) return [];
+
+  const toRec = (r: AssessmentRow): Record<string, unknown> => ({
+    ...r,
+    domains: r.domains.join(', '),
+  });
+
+  if (groupBy === 'item') {
+    const sorted = [...rows].sort(
+      (a, b) =>
+        a.itemOrder - b.itemOrder ||
+        (isMultiSchool ? a.schoolName.localeCompare(b.schoolName) : 0)
+    );
+    if (!isMultiSchool) return sorted.map(toRec);
+
+    // Multi-school: section header per item, sub-rows identify school in Item column
+    const result: Record<string, unknown>[] = [];
+    let lastOrder = -1;
+    for (const row of sorted) {
+      if (row.itemOrder !== lastOrder) {
+        result.push({ _sectionHeader: true, _label: `#${row.itemOrder}  ·  ${row.itemPrompt}` });
+        lastOrder = row.itemOrder;
+      }
+      result.push({ ...toRec(row), itemPrompt: row.schoolName, itemOrder: '' });
+    }
+    return result;
+  }
+
+  if (groupBy === 'domain') {
+    const sorted = [...rows].sort((a, b) => {
+      const da = a.domains[0] ?? '';
+      const db = b.domains[0] ?? '';
+      if (!da && db) return 1;
+      if (da && !db) return -1;
+      return da.localeCompare(db) || a.itemOrder - b.itemOrder || a.schoolName.localeCompare(b.schoolName);
+    });
+    const result: Record<string, unknown>[] = [];
+    let lastDomain = '\0';
+    for (const row of sorted) {
+      const d = row.domains[0] ?? '';
+      if (d !== lastDomain) {
+        result.push({ _sectionHeader: true, _label: d || 'No Domain' });
+        lastDomain = d;
+      }
+      result.push(toRec(row));
+    }
+    return result;
+  }
+
+  // groupBy === 'school'
+  const sorted = [...rows].sort(
+    (a, b) => a.schoolName.localeCompare(b.schoolName) || a.itemOrder - b.itemOrder
+  );
+  const result: Record<string, unknown>[] = [];
+  let lastSchool = '\0';
+  for (const row of sorted) {
+    if (row.schoolName !== lastSchool) {
+      result.push({ _sectionHeader: true, _label: row.schoolName });
+      lastSchool = row.schoolName;
+    }
+    result.push(toRec(row));
+  }
+  return result;
+}
+
+/** Sort rows for chart display: by domain when groupBy==='domain', else by itemOrder. */
+function sortRowsForChart(rows: AssessmentRow[], groupBy: AssessmentGroupBy): AssessmentRow[] {
+  if (groupBy === 'domain') {
+    return [...rows].sort((a, b) => {
+      const da = a.domains[0] ?? '';
+      const db = b.domains[0] ?? '';
+      if (!da && db) return 1;
+      if (da && !db) return -1;
+      return da.localeCompare(db) || a.itemOrder - b.itemOrder;
+    });
+  }
+  return [...rows].sort((a, b) => a.itemOrder - b.itemOrder);
+}
+
 // ─── Inline item detail expand (table view) ───────────────────────────────────
 
 /**
@@ -233,6 +330,7 @@ export default function AssessmentClient({
   // ── Results state ───────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('form');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [groupBy, setGroupBy] = useState<AssessmentGroupBy>('item');
   const [rows, setRows] = useState<AssessmentRow[] | null>(null);
   const [loadedSchools, setLoadedSchools] = useState<SchoolInfo[]>([]);
   const [loadedBankId, setLoadedBankId] = useState('');
@@ -305,6 +403,7 @@ export default function AssessmentClient({
       setRows(data);
       setLoadedSchools(selectedSchools);
       setLoadedBankId(selectedBankAtId);
+      setGroupBy('item');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setPhase('form');
@@ -324,31 +423,16 @@ export default function AssessmentClient({
   const loadedBank = banks.find((b) => b.reportAtId === loadedBankId);
   const assessmentLabel = loadedBank?.assessmentId ?? loadedBankId;
 
-  // ── Table rows with section headers for multi-school ─────────────────────────
-  const tableCols = assessmentTableColumns(comparisonGroups);
-  const tableRows: Record<string, unknown>[] = (() => {
-    if (!rows || rows.length === 0) return [];
-    // Group rows by school in the order they appear (API preserves school order)
-    const groups = new Map<string, AssessmentRow[]>();
-    for (const r of rows) {
-      const list = groups.get(r.schoolName) ?? [];
-      list.push(r);
-      groups.set(r.schoolName, list);
-    }
-    const isMulti = groups.size > 1;
-    const result: Record<string, unknown>[] = [];
-    for (const [schoolName, schoolRows] of Array.from(groups.entries())) {
-      if (isMulti) {
-        result.push({ _sectionHeader: true, _label: schoolName });
-      }
-      for (const r of schoolRows) {
-        result.push({ ...r, domains: r.domains.join(', ') });
-      }
-    }
-    return result;
-  })();
+  // ── Derived flags ────────────────────────────────────────────────────────────
+  const isMultiSchool = loadedSchools.length > 1;
 
-  // ── Chart groups (one panel per school) ──────────────────────────────────────
+  // ── Table rows — grouped per groupBy selection ────────────────────────────────
+  const tableCols = assessmentTableColumns(comparisonGroups);
+  const tableRows: Record<string, unknown>[] = rows && rows.length > 0
+    ? buildAssessmentTableRows(rows, groupBy, isMultiSchool)
+    : [];
+
+  // ── Chart groups: one panel per school, items sorted per groupBy ──────────────
   const chartGroups = (() => {
     if (!rows) return [] as { schoolName: string; schoolRows: AssessmentRow[] }[];
     const map = new Map<string, AssessmentRow[]>();
@@ -357,7 +441,10 @@ export default function AssessmentClient({
       list.push(r);
       map.set(r.schoolName, list);
     }
-    return Array.from(map.entries()).map(([schoolName, schoolRows]) => ({ schoolName, schoolRows }));
+    return Array.from(map.entries()).map(([schoolName, schoolRows]) => ({
+      schoolName,
+      schoolRows: sortRowsForChart(schoolRows, groupBy),
+    }));
   })();
 
   // ── CSV columns and rows ─────────────────────────────────────────────────────
@@ -476,24 +563,51 @@ export default function AssessmentClient({
       {/* ── Results ────────────────────────────────────────────────────────── */}
       {phase === 'results' && rows && rows.length > 0 && (
         <div className="space-y-4">
-          {/* View toggle + download */}
+          {/* View toggle + group-by + download */}
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 gap-0.5">
-              {(['table', 'charts'] as ViewMode[]).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setViewMode(v)}
-                  className={[
-                    'px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-all',
-                    viewMode === v
-                      ? 'bg-[#17345B] text-white shadow-sm'
-                      : 'text-[#5E738C] hover:text-[#17345B] hover:bg-slate-200',
-                  ].join(' ')}
-                >
-                  {v === 'charts' ? 'Charts' : 'Table'}
-                </button>
-              ))}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* View tabs */}
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 gap-0.5">
+                {(['table', 'charts'] as ViewMode[]).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setViewMode(v)}
+                    className={[
+                      'px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-all',
+                      viewMode === v
+                        ? 'bg-[#17345B] text-white shadow-sm'
+                        : 'text-[#5E738C] hover:text-[#17345B] hover:bg-slate-200',
+                    ].join(' ')}
+                  >
+                    {v === 'charts' ? 'Charts' : 'Table'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Group by */}
+              <div
+                role="group"
+                aria-label="Group by"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+              >
+                <span className="px-2 text-xs text-slate-500 font-medium">Group by</span>
+                {(['item', 'domain', ...(isMultiSchool ? ['school'] : [])] as AssessmentGroupBy[]).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setGroupBy(opt)}
+                    className={[
+                      'px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize',
+                      groupBy === opt
+                        ? 'bg-[#17345B] text-white shadow-sm'
+                        : 'text-[#5E738C] hover:text-[#17345B] hover:bg-slate-200',
+                    ].join(' ')}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
