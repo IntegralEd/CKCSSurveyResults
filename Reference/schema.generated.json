@@ -4928,6 +4928,13 @@
           "linkedTableName": null
         },
         {
+          "id": "fldo1267RgbfOeUWB",
+          "name": "Time_Since_Creation",
+          "type": "number",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldTAaQCLybJslOdI",
           "name": "Assigned_Schools",
           "type": "multipleRecordLinks",
