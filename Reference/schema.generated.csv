@@ -683,6 +683,7 @@ Users_Sync,tblWQJewTlrkfypPP,fldhsQvl0q62vD4XP,Assessment_Items,multipleRecordLi
 Users_Sync,tblWQJewTlrkfypPP,fldLmzsktxCKmB2ny,Magic_Link,url,,,
 Users_Sync,tblWQJewTlrkfypPP,fldmz0eKmF0ipGwhe,Import_Log,multipleRecordLinks,checked,tblaMuFVHtzyyKKqB,Assessment_Import_Log
 Users_Sync,tblWQJewTlrkfypPP,fldNVpxVAj48Z0Zhx,Schools_Linked (from Assigned_Regions),singleLineText,,,
+Users_Sync,tblWQJewTlrkfypPP,fldo1267RgbfOeUWB,Time_Since_Creation,number,,,
 Users_Sync,tblWQJewTlrkfypPP,fldTAaQCLybJslOdI,Assigned_Schools,multipleRecordLinks,checked,tblTyVLW0R8MxmQ0S,Schools
 Users_Sync,tblWQJewTlrkfypPP,fldvrolurNxClTr59,Account_Type,singleSelect,,,
 Users_Sync,tblWQJewTlrkfypPP,fldZe5iov1NlxRpcK,Last_Name,singleLineText,,,
