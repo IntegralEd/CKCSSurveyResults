@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+#
+# Opt-in hook. Enable once per clone with:
+#   npm run hooks:install
+#
+# Verifies the Airtable schema snapshot hasn't drifted. Skips silently if
+# there are no Airtable creds locally (e.g. non-Airtable contributors).
+
+set -e
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+# Load .env.local / .env so the check works without exporting creds manually.
+for f in "$repo_root/.env.local" "$repo_root/.env"; do
+  if [ -f "$f" ]; then
+    # shellcheck disable=SC1090
+    set -a; . "$f"; set +a
+  fi
+done
+
+if [ -z "${AIRTABLE_API_KEY:-}" ] || [ -z "${AIRTABLE_BASE_ID:-}" ]; then
+  echo "pre-commit: AIRTABLE_API_KEY/AIRTABLE_BASE_ID not set — skipping schema check."
+  exit 0
+fi
+
+echo "pre-commit: checking Airtable schema drift…"
+npm run --silent schema:verify
