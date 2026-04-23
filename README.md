@@ -309,7 +309,30 @@ All routes use `force-dynamic` (no ISR). `/api/filters` and `/api/items` include
 
 ## Airtable Schema
 
-All table IDs and field names confirmed from `Reference/Schema_Registry-*.csv`.
+All table IDs and field names are pulled directly from the Airtable Meta API
+and snapshotted to `Reference/schema.generated.json` and
+`Reference/schema.generated.csv`. A CI drift check compares the live schema to
+the committed snapshot on every PR — see [Schema Drift CI](#schema-drift-ci)
+below. The older hand-maintained `Schema_Registry-*.csv` is kept for reference
+only.
+
+### Schema Drift CI
+
+- `npm run schema:sync` — fetch the live schema and regenerate the snapshot files.
+- `npm run schema:verify` — sync + fail if the result differs from what's committed.
+- `npm run hooks:install` — one-time: wire up `.githooks/pre-commit` so commits
+  verify drift locally (silently skipped when no Airtable creds are present).
+
+The GitHub Actions workflow at `.github/workflows/schema-drift.yml` runs
+`schema:verify` on every PR and push to `main`. It reads the repo secret
+`AIRTABLE_PAT` (read-only PAT scoped to the project bases) and defaults the
+base to `app8bFS8L3YQAmFzz`; override by adding a repo variable
+`AIRTABLE_BASE_ID`.
+
+When Airtable field/table names change, the expected flow is: make the change
+in Airtable, run `npm run schema:sync`, commit the regenerated snapshot
+alongside the code update in the same PR. CI will refuse to merge code whose
+committed snapshot disagrees with the live base.
 
 ### Table IDs
 

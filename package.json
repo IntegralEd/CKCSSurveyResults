@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "schema:sync": "node scripts/sync-schema.mjs",
+    "schema:verify": "node scripts/verify-schema.mjs",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@lottiefiles/dotlottie-react": "^0.18.10",
