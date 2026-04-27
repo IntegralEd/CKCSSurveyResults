@@ -40,8 +40,11 @@ type SortDir = 'asc' | 'desc';
  *   - Default sort by a specified key (itemOrder by default)
  *   - Column header click to re-sort
  *   - Per-column width control
- *   - Floating horizontal scrollbar that stays pinned at the bottom of the
- *     viewport while the user scrolls the page vertically
+ *   - Floating horizontal scrollbars at BOTH top and bottom of the table.
+ *     The top scrollbar is visible the moment the table renders (no scrolling
+ *     required); the bottom one stays pinned to the viewport bottom while the
+ *     parent block is in view. The top bar is critical inside iframe/Softr
+ *     embeds where auto-resized iframes don't trigger sticky positioning.
  *   - Section header rows (row._sectionHeader = true) rendered as full-width dividers
  */
 export default function ResultsTable({ columns, rows, defaultSortKey, disableSort = false, renderCell }: Props) {
@@ -49,8 +52,8 @@ export default function ResultsTable({ columns, rows, defaultSortKey, disableSor
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const tableWrapRef = useRef<HTMLDivElement>(null);
-  const ghostRef = useRef<HTMLDivElement>(null);
-  const ghostInnerRef = useRef<HTMLDivElement>(null);
+  const ghostTopRef = useRef<HTMLDivElement>(null);
+  const ghostBottomRef = useRef<HTMLDivElement>(null);
   const [ghostWidth, setGhostWidth] = useState(0);
 
   // Keep ghost scrollbar width in sync with actual table scroll width
@@ -64,18 +67,34 @@ export default function ResultsTable({ columns, rows, defaultSortKey, disableSor
     return () => ro.disconnect();
   }, [rows, columns]);
 
-  // Sync scroll: table → ghost
+  // Sync scroll between table and both ghost scrollbars (guard against feedback loops)
   useEffect(() => {
     const wrap = tableWrapRef.current;
-    const ghost = ghostRef.current;
-    if (!wrap || !ghost) return;
-    const onTableScroll = () => { ghost.scrollLeft = wrap.scrollLeft; };
-    const onGhostScroll = () => { wrap.scrollLeft = ghost.scrollLeft; };
-    wrap.addEventListener('scroll', onTableScroll);
-    ghost.addEventListener('scroll', onGhostScroll);
+    const top = ghostTopRef.current;
+    const bottom = ghostBottomRef.current;
+    if (!wrap || !top || !bottom) return;
+
+    let syncing = false;
+    const sync = (source: HTMLElement, ...targets: HTMLElement[]) => {
+      if (syncing) return;
+      syncing = true;
+      for (const t of targets) {
+        if (t.scrollLeft !== source.scrollLeft) t.scrollLeft = source.scrollLeft;
+      }
+      // release on next frame so the resulting scroll events don't re-enter
+      requestAnimationFrame(() => { syncing = false; });
+    };
+    const onWrap = () => sync(wrap, top, bottom);
+    const onTop = () => sync(top, wrap, bottom);
+    const onBottom = () => sync(bottom, wrap, top);
+
+    wrap.addEventListener('scroll', onWrap);
+    top.addEventListener('scroll', onTop);
+    bottom.addEventListener('scroll', onBottom);
     return () => {
-      wrap.removeEventListener('scroll', onTableScroll);
-      ghost.removeEventListener('scroll', onGhostScroll);
+      wrap.removeEventListener('scroll', onWrap);
+      top.removeEventListener('scroll', onTop);
+      bottom.removeEventListener('scroll', onBottom);
     };
   }, []);
 
@@ -106,11 +125,21 @@ export default function ResultsTable({ columns, rows, defaultSortKey, disableSor
 
   return (
     <div>
+      {/* Top floating scrollbar — visible the moment the table renders, regardless
+          of iframe/embed scroll behavior. Mirrors the bottom one. */}
+      <div
+        ref={ghostTopRef}
+        className="overflow-x-auto bg-white border border-slate-200 border-b-0 rounded-t-lg"
+        style={{ height: 14 }}
+        aria-hidden="true"
+      >
+        <div style={{ width: ghostWidth, height: 1 }} />
+      </div>
       {/* Table scroll container */}
       <div
         ref={tableWrapRef}
-        className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm"
-        style={{ scrollbarWidth: 'none' }} // hide native scrollbar; ghost handles it
+        className="overflow-x-auto border-x border-slate-200 shadow-sm"
+        style={{ scrollbarWidth: 'none' }} // hide native scrollbar; ghosts handle it
       >
         <table className="text-sm border-collapse" style={{ minWidth: '100%', width: 'max-content' }}>
           <thead>
@@ -190,13 +219,15 @@ export default function ResultsTable({ columns, rows, defaultSortKey, disableSor
         </table>
       </div>
 
-      {/* Floating horizontal scrollbar — stays pinned to bottom of viewport */}
+      {/* Bottom floating horizontal scrollbar — stays pinned to bottom of viewport
+          while the parent block is in view (works in standalone, no-op in some embeds). */}
       <div
-        ref={ghostRef}
-        className="overflow-x-auto sticky bottom-0 z-10 bg-white border-t border-slate-200"
+        ref={ghostBottomRef}
+        className="overflow-x-auto sticky bottom-0 z-10 bg-white border border-slate-200 border-t-0 rounded-b-lg"
         style={{ height: 16 }}
+        aria-hidden="true"
       >
-        <div ref={ghostInnerRef} style={{ width: ghostWidth, height: 1 }} />
+        <div style={{ width: ghostWidth, height: 1 }} />
       </div>
     </div>
   );
