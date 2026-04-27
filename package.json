@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "schema:sync": "node scripts/sync-schema.mjs",
     "schema:verify": "node scripts/verify-schema.mjs",
+    "inspect:assessment-shapes": "node scripts/inspect-assessment-shapes.mjs",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "dependencies": {

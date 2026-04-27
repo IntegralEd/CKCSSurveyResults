@@ -57,17 +57,17 @@ export const ASSESSMENT_RESULT_FIELDS = {
   cityFullCreditPct: 'City_Full_Credit_Percent',
   cityPartialCreditPct: 'City_Partial_Credit_Percent',
   cityBlanksCount: 'City_Blanks_Count',
-  // Region comparison (singleLineText → parseFloat; pct fields stored as 0–100)
-  regionN: 'Region_N',
-  regionFullCreditPct: 'RegionFull_Credit_All',
-  regionPartialCreditPct: 'Region_Partial_Credit',
+  // Region comparison (multipleLookupValues from Assessment_Results_Region_Item — take [0])
+  regionN: 'Region_Responses_Count',
+  regionFullCreditPct: 'Region_Full_Credit_Pct',
+  regionPartialCreditPct: 'Region_Partial_Credit_Pct',
   regionBlanksCount: 'Region_Blanks_Count',
   regionBlankPct: 'Region_Blanks_Percent',
-  // Network comparison (singleLineText with spaces → parseFloat)
-  networkN: 'Network N',
-  networkFullCreditPct: 'Network Full Credit',
-  networkPartialCreditPct: 'Network Partial Credit',
-  networkBlankPct: 'Network Blank',
+  // Network comparison (multipleLookupValues from Assessment_Network_Results — take [0])
+  networkN: 'Network_Responses_Count',
+  networkFullCreditPct: 'Network_Full_Credit_Pct',
+  networkPartialCreditPct: 'Network_Partial_Credit_Pct',
+  networkBlankPct: 'Network_Blanks_Pct',
 } as const;
 
 // ─── File-local helpers ───────────────────────────────────────────────────────
@@ -84,12 +84,6 @@ function lookupNum(val: unknown): number {
 function lookupStr(val: unknown): string {
   if (Array.isArray(val)) return String(val[0] ?? '').trim();
   return String(val ?? '').trim();
-}
-
-/** Parse a singleLineText field that stores a numeric value */
-function strNum(val: unknown): number {
-  if (typeof val === 'number') return val;
-  return parseFloat(String(val ?? '0')) || 0;
 }
 
 /** Coerce any field to a trimmed string */
@@ -189,15 +183,15 @@ export async function fetchAssessmentResults(
       cityFullCreditPct:    lookupNum(f[ASSESSMENT_RESULT_FIELDS.cityFullCreditPct]),
       cityPartialCreditPct: lookupNum(f[ASSESSMENT_RESULT_FIELDS.cityPartialCreditPct]),
       cityBlanksCount:      lookupNum(f[ASSESSMENT_RESULT_FIELDS.cityBlanksCount]),
-      regionN:              strNum(f[ASSESSMENT_RESULT_FIELDS.regionN]),
-      regionFullCreditPct:  strNum(f[ASSESSMENT_RESULT_FIELDS.regionFullCreditPct]),
-      regionPartialCreditPct: strNum(f[ASSESSMENT_RESULT_FIELDS.regionPartialCreditPct]),
+      regionN:              lookupNum(f[ASSESSMENT_RESULT_FIELDS.regionN]),
+      regionFullCreditPct:  lookupNum(f[ASSESSMENT_RESULT_FIELDS.regionFullCreditPct]),
+      regionPartialCreditPct: lookupNum(f[ASSESSMENT_RESULT_FIELDS.regionPartialCreditPct]),
       regionBlanksCount:    lookupNum(f[ASSESSMENT_RESULT_FIELDS.regionBlanksCount]),
       regionBlankPct:       lookupNum(f[ASSESSMENT_RESULT_FIELDS.regionBlankPct]),
-      networkN:             strNum(f[ASSESSMENT_RESULT_FIELDS.networkN]),
-      networkFullCreditPct: strNum(f[ASSESSMENT_RESULT_FIELDS.networkFullCreditPct]),
-      networkPartialCreditPct: strNum(f[ASSESSMENT_RESULT_FIELDS.networkPartialCreditPct]),
-      networkBlankPct:      strNum(f[ASSESSMENT_RESULT_FIELDS.networkBlankPct]),
+      networkN:             lookupNum(f[ASSESSMENT_RESULT_FIELDS.networkN]),
+      networkFullCreditPct: lookupNum(f[ASSESSMENT_RESULT_FIELDS.networkFullCreditPct]),
+      networkPartialCreditPct: lookupNum(f[ASSESSMENT_RESULT_FIELDS.networkPartialCreditPct]),
+      networkBlankPct:      lookupNum(f[ASSESSMENT_RESULT_FIELDS.networkBlankPct]),
     };
   });
 }

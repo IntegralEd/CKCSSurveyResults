@@ -828,17 +828,94 @@
       ]
     },
     {
+      "id": "tblBovIk1lHyz48dm",
+      "name": "Assessment_Results_Network_Item",
+      "primaryFieldId": "flduxCzYyXzOkrpQw",
+      "fields": [
+        {
+          "id": "fldAIaFFuoGo44lxD",
+          "name": "Network_Partial_Credit_Count",
+          "type": "rollup",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldfvrgv1vwtrL3pW",
+          "name": "Network_Partial_Credit_Pct",
+          "type": "formula",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldlQDnoSwCUxjdk1",
+          "name": "Network_Responses_Count",
+          "type": "rollup",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldpLaSLBt6Gt5ZyI",
+          "name": "Assessment_Results_School_Item",
+          "type": "multipleRecordLinks",
+          "linkedTableId": "tblD7Kjxmno3JuhAk",
+          "linkedTableName": "Assessment_Results_School_Item"
+        },
+        {
+          "id": "fldRk9TaqaWWc9SVo",
+          "name": "Network_Blanks_Count",
+          "type": "rollup",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldSRyfMrpCDYxClf",
+          "name": "Network_Blanks_Pct",
+          "type": "formula",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "flduxCzYyXzOkrpQw",
+          "name": "Network_Assessment_Item_Key",
+          "type": "multilineText",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldvbuViJi0Loa9Bn",
+          "name": "Assessment_Item",
+          "type": "multipleRecordLinks",
+          "linkedTableId": "tblqIgPFR3mCHjQRo",
+          "linkedTableName": "Assessment_Items"
+        },
+        {
+          "id": "fldWCsu3ItKReZNXz",
+          "name": "Administration",
+          "type": "multipleRecordLinks",
+          "linkedTableId": "tblwgM7tZ0e1sEpfX",
+          "linkedTableName": "Assessment_Banks"
+        },
+        {
+          "id": "fldWXjoY3XohZTwqA",
+          "name": "Network_Full_Credit_Pct",
+          "type": "formula",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldxZrwwRfjFKHgh0",
+          "name": "Network_Full_Credit_Count",
+          "type": "rollup",
+          "linkedTableId": null,
+          "linkedTableName": null
+        }
+      ]
+    },
+    {
       "id": "tblD7Kjxmno3JuhAk",
       "name": "Assessment_Results_School_Item",
       "primaryFieldId": "fldMt9WkdRll7Yr4D",
       "fields": [
-        {
-          "id": "fld19afWwfzVf4noz",
-          "name": "RegionFull_Credit_All",
-          "type": "singleLineText",
-          "linkedTableId": null,
-          "linkedTableName": null
-        },
         {
           "id": "fld1qCHtBndO1Ma8D",
           "name": "City_Blanks_Count",
@@ -857,6 +934,13 @@
           "id": "fld2IxrtTUrEMCEms",
           "name": "Region_Item_Results_Link",
           "type": "singleLineText",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fld3HUA4Hv1PQoWEL",
+          "name": "Network_Full_Credit_Count",
+          "type": "multipleLookupValues",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -924,9 +1008,9 @@
           "linkedTableName": null
         },
         {
-          "id": "fldD6EAb6GozGjqsf",
-          "name": "Region_N",
-          "type": "singleLineText",
+          "id": "fldc6n8deZ1F9EJnc",
+          "name": "Region_Responses_Count",
+          "type": "multipleLookupValues",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -959,6 +1043,13 @@
           "linkedTableName": null
         },
         {
+          "id": "fldfnNchPVUN9le1f",
+          "name": "Region_Full_Credit_Count",
+          "type": "multipleLookupValues",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldFPi8d120rQMElg",
           "name": "Full_Credit_Open",
           "type": "number",
@@ -973,9 +1064,23 @@
           "linkedTableName": "Schools"
         },
         {
+          "id": "fldglyWoQQGZOjBa8",
+          "name": "Network_Partial_Credit_Pct",
+          "type": "multipleLookupValues",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldgOwOfCCQw50Nmr",
           "name": "Standards_Tags",
           "type": "multipleSelects",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldh7qVuEsGASSED8",
+          "name": "Network_Responses_Count",
+          "type": "multipleLookupValues",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -1001,13 +1106,6 @@
           "linkedTableName": null
         },
         {
-          "id": "fldIR5OFrEBt0P5pY",
-          "name": "Network Blank",
-          "type": "singleLineText",
-          "linkedTableId": null,
-          "linkedTableName": null
-        },
-        {
           "id": "fldiyTg1ruxwhAjZC",
           "name": "Item_Responses",
           "type": "number",
@@ -1029,9 +1127,23 @@
           "linkedTableName": null
         },
         {
+          "id": "fldJzz1imzwd6t3hO",
+          "name": "Network_Blanks_Count",
+          "type": "multipleLookupValues",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldKCxFVMur7bLgfl",
           "name": "Publication_Status",
           "type": "multipleSelects",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldkFxHjoly4Pt3cR",
+          "name": "Region_Partial_Credit_Count",
+          "type": "multipleLookupValues",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -1071,9 +1183,30 @@
           "linkedTableName": null
         },
         {
+          "id": "fldLGROoi7Kn5DKpH",
+          "name": "Assessment_Network_Results",
+          "type": "multipleRecordLinks",
+          "linkedTableId": "tblBovIk1lHyz48dm",
+          "linkedTableName": "Assessment_Results_Network_Item"
+        },
+        {
+          "id": "fldM5I9sK2GUm6OVk",
+          "name": "Network_Full_Credit_Pct",
+          "type": "multipleLookupValues",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldm5kBcsggIZI4m4",
           "name": "N_Correct",
           "type": "number",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldmOEIJy0l8R7LaY",
+          "name": "Network_Partial_Credit_Count",
+          "type": "multipleLookupValues",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -1092,13 +1225,6 @@
           "linkedTableName": null
         },
         {
-          "id": "fldMyawKcGEWcUXtT",
-          "name": "Region_Partial_Credit",
-          "type": "singleLineText",
-          "linkedTableId": null,
-          "linkedTableName": null
-        },
-        {
           "id": "fldn1K17VVXfaO3u5",
           "name": "Assessment_Bank_Report_AT_ID",
           "type": "multipleLookupValues",
@@ -1109,13 +1235,6 @@
           "id": "fldn7iutHNx5nr3m3",
           "name": "City_Partial_Credit_Percent",
           "type": "multipleLookupValues",
-          "linkedTableId": null,
-          "linkedTableName": null
-        },
-        {
-          "id": "fldnGODqPtEypnQPp",
-          "name": "Network Partial Credit",
-          "type": "singleLineText",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -1141,6 +1260,13 @@
           "linkedTableName": null
         },
         {
+          "id": "fldpkzTnHbS4ttNVi",
+          "name": "Region_Full_Credit_Pct",
+          "type": "multipleLookupValues",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldpTwdgfRgfVENiu",
           "name": "Assessment_Publication_Link",
           "type": "multipleRecordLinks",
@@ -1151,13 +1277,6 @@
           "id": "fldqlF35ad1XTaRi5",
           "name": "Region_Txt",
           "type": "multipleLookupValues",
-          "linkedTableId": null,
-          "linkedTableName": null
-        },
-        {
-          "id": "fldqSxriQELHxSqsQ",
-          "name": "Network N",
-          "type": "singleLineText",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -1218,6 +1337,13 @@
           "linkedTableName": null
         },
         {
+          "id": "fldUFCVw1OzyCyNnY",
+          "name": "Network_Blanks_Pct",
+          "type": "multipleLookupValues",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
           "id": "fldupwyNYwqWye9E9",
           "name": "Partial_Credit",
           "type": "number",
@@ -1235,6 +1361,13 @@
           "id": "fldw2igYy3m9u3cxk",
           "name": "Full_Credit_All_Count",
           "type": "number",
+          "linkedTableId": null,
+          "linkedTableName": null
+        },
+        {
+          "id": "fldwdLy09yzRyP4Bs",
+          "name": "Region_Partial_Credit_Pct",
+          "type": "multipleLookupValues",
           "linkedTableId": null,
           "linkedTableName": null
         },
@@ -1263,13 +1396,6 @@
           "id": "fldyXVnX2HhBjvndx",
           "name": "Blanks",
           "type": "number",
-          "linkedTableId": null,
-          "linkedTableName": null
-        },
-        {
-          "id": "fldza7xwuEe8Oeb6Q",
-          "name": "Network Full Credit",
-          "type": "singleLineText",
           "linkedTableId": null,
           "linkedTableName": null
         },
