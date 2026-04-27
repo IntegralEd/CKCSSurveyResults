@@ -100,10 +100,10 @@ export function buildAssessmentRows(
 
       if (includeRegion && r.regionN > 0) {
         regionN               = r.regionN;
-        // Region pct fields are stored as 0–100 (not 0–1 decimals) — use round1, not pct()
-        regionFullCreditPct   = round1(r.regionFullCreditPct);
-        regionPartialCreditPct = round1(r.regionPartialCreditPct);
-        regionBlankPct        = round1(r.regionBlankPct);
+        // Region pct fields are decimals 0–1 (multipleLookupValues from Assessment_Results_Region_Item)
+        regionFullCreditPct   = pct(r.regionFullCreditPct);
+        regionPartialCreditPct = pct(r.regionPartialCreditPct);
+        regionBlankPct        = pct(r.regionBlankPct);
         regionNoCreditPct     = clamp0(
           round1(100 - regionFullCreditPct - regionPartialCreditPct - regionBlankPct)
         );
@@ -121,10 +121,10 @@ export function buildAssessmentRows(
 
       if (includeNetwork && r.networkN > 0) {
         networkN               = r.networkN;
-        // Network pct fields are stored as 0–100 (not 0–1 decimals) — use round1, not pct()
-        networkFullCreditPct   = round1(r.networkFullCreditPct);
-        networkPartialCreditPct = round1(r.networkPartialCreditPct);
-        networkBlankPct        = round1(r.networkBlankPct);
+        // Network pct fields are decimals 0–1 (multipleLookupValues from Assessment_Network_Results)
+        networkFullCreditPct   = pct(r.networkFullCreditPct);
+        networkPartialCreditPct = pct(r.networkPartialCreditPct);
+        networkBlankPct        = pct(r.networkBlankPct);
         networkNoCreditPct     = clamp0(
           round1(100 - networkFullCreditPct - networkPartialCreditPct - networkBlankPct)
         );

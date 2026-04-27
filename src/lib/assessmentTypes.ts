@@ -46,13 +46,13 @@ export interface AssessmentBank {
  *   City_Full_Credit_Percent          → cityFullCreditPct    (multipleLookupValues[0], decimal)
  *   City_Partial_Credit_Percent       → cityPartialCreditPct (multipleLookupValues[0], decimal)
  *   City_Blanks_Count                 → cityBlanksCount      (multipleLookupValues[0])
- *   Region_N                          → regionN              (singleLineText → parseFloat)
- *   RegionFull_Credit_All             → regionFullCreditPct  (singleLineText → parseFloat, decimal)
- *   Region_Partial_Credit             → regionPartialCreditPct (singleLineText → parseFloat, decimal)
- *   Network N                         → networkN             (singleLineText → parseFloat)
- *   Network Full Credit               → networkFullCreditPct (singleLineText → parseFloat, decimal)
- *   Network Partial Credit            → networkPartialCreditPct (singleLineText → parseFloat, decimal)
- *   Network Blank                     → networkBlankPct      (singleLineText → parseFloat, decimal)
+ *   Region_Responses_Count            → regionN              (multipleLookupValues[0])
+ *   Region_Full_Credit_Pct            → regionFullCreditPct  (multipleLookupValues[0], decimal 0–1)
+ *   Region_Partial_Credit_Pct         → regionPartialCreditPct (multipleLookupValues[0], decimal 0–1)
+ *   Network_Responses_Count           → networkN             (multipleLookupValues[0])
+ *   Network_Full_Credit_Pct           → networkFullCreditPct (multipleLookupValues[0], decimal 0–1)
+ *   Network_Partial_Credit_Pct        → networkPartialCreditPct (multipleLookupValues[0], decimal 0–1)
+ *   Network_Blanks_Pct                → networkBlankPct      (multipleLookupValues[0], decimal 0–1)
  */
 export interface AssessmentSchoolResult {
   id: string;
@@ -78,19 +78,18 @@ export interface AssessmentSchoolResult {
   cityFullCreditPct: number;     // decimal 0–1
   cityPartialCreditPct: number;  // decimal 0–1
   cityBlanksCount: number;
-  // Region comparison
-  // RegionFull_Credit_All, Region_Partial_Credit → singleLineText, stored 0–100
-  // Region_Blanks_Count, Region_Blanks_Percent   → multipleLookupValues
+  // Region comparison (multipleLookupValues from Assessment_Results_Region_Item → [0])
+  // All pct fields stored as decimals 0–1, matching City_*_Percent shape.
   regionN: number;
-  regionFullCreditPct: number;    // 0–100 (singleLineText)
-  regionPartialCreditPct: number; // 0–100 (singleLineText)
-  regionBlanksCount: number;      // multipleLookupValues[0]
-  regionBlankPct: number;         // multipleLookupValues[0] — assumed 0–100
-  // Network comparison (singleLineText → parseFloat)
+  regionFullCreditPct: number;    // decimal 0–1
+  regionPartialCreditPct: number; // decimal 0–1
+  regionBlanksCount: number;      // count
+  regionBlankPct: number;         // decimal 0–1
+  // Network comparison (multipleLookupValues from Assessment_Network_Results → [0])
   networkN: number;
   networkFullCreditPct: number;    // decimal 0–1
   networkPartialCreditPct: number; // decimal 0–1
-  networkBlankPct: number;         // decimal 0–1 (may be 0 when not populated)
+  networkBlankPct: number;         // decimal 0–1
 }
 
 // ─── Aggregated display row ───────────────────────────────────────────────────
